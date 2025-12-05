@@ -4,15 +4,21 @@ import AllSalesTable from "../components/admin/AllSalesTable";
 
 export default function AdminDashboard() {
   return (
-    <div className='p-6 bg-gray-50 min-h-screen'>
-      <h1 className='text-2xl font-bold mb-6'>Admin Dashboard</h1>
+    <div className='container-small'>
+      <header className='mb-4'>
+        <h1 className='fw-semibold' style={{ fontSize: "1.5rem" }}>
+          Admin Dashboard
+        </h1>
+      </header>
 
-      <div className='grid md:grid-cols-2 gap-6 mb-6'>
+      <section className='dashboard-grid mb-4'>
         <AddProductForm />
-        <AllSalesTable />
-      </div>
+        <ProductsTable />
+      </section>
 
-      <ProductsTable />
+      <section className='mb-4'>
+        <AllSalesTable />
+      </section>
     </div>
   );
 }

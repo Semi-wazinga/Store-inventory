@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useProducts } from "../../context/ProductContext";
-import { useSales } from "../../context/SalesContext";
+import { useProducts } from "../../context/useProducts";
+import { useSales } from "../../context/useSales";
 
 export default function RecordSaleForm() {
   const { products } = useProducts();
@@ -24,11 +24,11 @@ export default function RecordSaleForm() {
   };
 
   return (
-    <div className='p-4 bg-white shadow rounded-2xl'>
-      <h2 className='text-lg font-semibold mb-3'>Record a Sale</h2>
-      <form onSubmit={handleSubmit} className='flex flex-col gap-3'>
+    <div className='bg-white p-4 shadow rounded-3'>
+      <h3 className='mb-4 text-center fw-semibold'>Record a Sale</h3>
+      <form onSubmit={handleSubmit} className=''>
         <select
-          className='border p-2 rounded-md'
+          className='form-control form-control-lg'
           value={productId}
           onChange={(e) => setProductId(e.target.value)}
         >
@@ -48,18 +48,17 @@ export default function RecordSaleForm() {
               ? products.find((p) => p._id === productId)?.quantity
               : undefined
           }
-          className='border p-2 rounded-md'
+          className='form-control form-control-lg'
           placeholder='Quantity Sold'
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
         />
 
-        <button
-          type='submit'
-          className='bg-blue-600 text-white rounded-md p-2 hover:bg-blue-700'
-        >
-          record sale
-        </button>
+        <div className='col-12 mt-3'>
+          <button type='submit' className='btn btn-success btn-lg w-100'>
+            Record Sale
+          </button>
+        </div>
       </form>
     </div>
   );

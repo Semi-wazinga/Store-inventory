@@ -1,33 +1,38 @@
-// src/components/Dashboard/TodaysSalesTable.jsx
-import { useSales } from "../../context/SalesContext";
+import { useSales } from "../../context/useSales";
 
 export default function TodaysSalesTable() {
-  const { todaysSales, loading } = useSales();
+  const { todaysSales, loading, todaysMessage, role } = useSales();
 
-  if (loading) return <p>Loading today’s sales...</p>;
-  if (!todaysSales.length) return <p>No sales recorded yet.</p>;
+  // Wait for role to be determined before showing anything
+  if (!role || loading) return <p>Loading today's sales...</p>;
+
+  // No sales message from backend
+  if (todaysMessage) return <p>{todaysMessage}</p>;
+
+  // If array is empty
+  if (!todaysSales || todaysSales.length === 0)
+    return <p>No sales recorded yet.</p>;
 
   return (
-    <div className='p-4 bg-white shadow rounded-2xl'>
-      <h2 className='text-lg font-semibold mb-3'>Today's Sales</h2>
-      <table className='w-full text-left border'>
+    <div className='table-responsive mb-7 bg-white p-4 shadow rounded-3'>
+      <h3 className='mb-4 text-center fw-semibold'>Today's Sales</h3>
+      <table className='table table-hover align-middle mb-0'>
         <thead>
-          <tr className='bg-gray-100'>
-            <th className='p-2'>#</th>
-            <th className='p-2'>Product</th>
-            <th className='p-2'>Qty Sold</th>
-            <th className='p-2'>Date</th>
+          <tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Qty Sold</th>
+            <th>Date</th>
           </tr>
         </thead>
+
         <tbody>
           {todaysSales.map((s, i) => (
-            <tr key={s._id} className='border-t'>
-              <td className='p-2'>{i + 1}</td>
-              <td className='p-2'>{s.product.name}</td>
-              <td className='p-2'>{s.quantity}</td>
-              <td className='p-2'>
-                {new Date(s.createdAt).toLocaleDateString()}
-              </td>
+            <tr key={s._id}>
+              <td>{i + 1}</td>
+              <td>{s.product?.name || "Product Deleted"}</td>
+              <td>{s.quantity}</td>
+              <td>{new Date(s.createdAt).toLocaleDateString()}</td>
             </tr>
           ))}
         </tbody>
@@ -35,3 +40,41 @@ export default function TodaysSalesTable() {
     </div>
   );
 }
+
+// // src/components/Dashboard/TodaysSalesTable.jsx
+// import { useSales } from "../../context/useSales";
+
+// export default function TodaysSalesTable() {
+//   const { todaysSales, loading, todaysMessage } = useSales();
+
+//   if (loading) return <p>Loading today's sales...</p>;
+//   if (todaysMessage) return <p>{todaysMessage}</p>;
+//   if (!todaysSales.length) return <p>No sales recorded yet.</p>;
+
+//   return (
+//     <div className='table-responsive mb-7 bg-white p-4 shadow rounded-3'>
+//       <h3 className='mb-4 text-center fw-semibold'>Today's Sales</h3>
+//       <table className='table table-hover align-middle mb-0'>
+//         <thead>
+//           <tr>
+//             <th>#</th>
+//             <th>Product</th>
+//             <th>Qty Sold</th>
+//             <th>Date</th>
+//           </tr>
+//         </thead>
+
+//         <tbody>
+//           {todaysSales.map((s, i) => (
+//             <tr key={s._id}>
+//               <td>{i + 1}</td>
+//               <td>{s.product?.name || "Product Deleted"}</td>
+//               <td>{s.quantity}</td>
+//               <td>{new Date(s.createdAt).toLocaleDateString()}</td>
+//             </tr>
+//           ))}
+//         </tbody>
+//       </table>
+//     </div>
+//   );
+// }
