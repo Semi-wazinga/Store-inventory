@@ -28,7 +28,7 @@ const RequireAdmin = ({ children }) => {
 
   if (loading) return <p>Checking authentication...</p>;
 
-  return isAdmin ? children : <Navigate to='/login' replace />;
+  return isAdmin ? children : <Navigate to='/' replace />;
 };
 
 export default RequireAdmin;

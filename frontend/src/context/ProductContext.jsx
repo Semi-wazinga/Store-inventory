@@ -1,13 +1,12 @@
 // src/context/ProductContext.jsx
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { ProductContext } from "./product-context";
 import {
   getProducts,
   createProduct,
   updateProduct,
   deleteProduct,
 } from "../api/api";
-
-const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
@@ -70,6 +69,7 @@ export const ProductProvider = ({ children }) => {
 
   // === Auto-load on mount ===
   useEffect(() => {
+    console.log("ProductProvider mounted, fetching products...");
     fetchProducts();
   }, []);
 
@@ -83,6 +83,8 @@ export const ProductProvider = ({ children }) => {
         addProduct,
         editProduct,
         removeProduct,
+        // backward-compatible alias: some components expect `deleteProduct`
+        deleteProduct: removeProduct,
         updateLocalProductQuantity,
       }}
     >
@@ -91,4 +93,4 @@ export const ProductProvider = ({ children }) => {
   );
 };
 
-export const useProducts = () => useContext(ProductContext);
+// `useProducts` moved to `src/context/useProducts.js`

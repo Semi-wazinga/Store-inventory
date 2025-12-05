@@ -1,64 +1,83 @@
 // src/context/SalesContext.jsx
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { SalesContext } from "./sales-context";
 import {
   createSale,
   getAllSales,
   getMySales,
   deleteSale,
   getTodaysSales,
+  getCurrentUser,
 } from "../api/api";
-import { useProducts } from "./ProductContext"; // use the hook instead of context object
+import { useProducts } from "./useProducts";
 
-const SalesContext = createContext();
-
-export const SalesProvider = ({ children, role }) => {
-  const [sales, setSales] = useState([]); // initialize as array
-  const [allSales, setAllSales] = useState([]);
-  const [todaysSales, setTodaysSales] = useState([]); // initialize as array
+export const SalesProvider = ({ children }) => {
+  const [sales, setSales] = useState([]); // storekeeper sales
+  const [allSales, setAllSales] = useState([]); // admin sales
+  const [todaysSales, setTodaysSales] = useState([]);
+  const [todaysMessage, setTodaysMessage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [role, setRole] = useState(null);
 
-  const { fetchProducts, updateLocalProductQuantity } = useProducts(); // fetchProducts from product context
+  const { fetchProducts, updateLocalProductQuantity } = useProducts();
 
-  // === Fetch sales (admin or storekeeper) ===
-  const fetchSales = async () => {
+  // --- Fetch current user to determine role ---
+  const fetchUserRole = useCallback(async () => {
     try {
+      console.log("Fetching user role...");
+      const res = await getCurrentUser();
+      const newRole = res.data.user.role;
+      console.log("User role fetched:", newRole);
+
+      setRole(newRole);
+    } catch (err) {
+      console.warn("User not logged in yet", err);
+      setRole(null);
+      setSales([]);
+      setAllSales([]);
+      setTodaysSales([]);
+      setTodaysMessage(null);
+    }
+  }, []);
+
+  // --- Fetch sales based on role ---
+  const fetchSales = useCallback(async () => {
+    if (!role) {
+      console.log("fetchSales called but no role set, returning");
+      return;
+    }
+
+    try {
+      console.log("Fetching sales for role:", role);
       setLoading(true);
 
       if (role === "admin") {
         const res = await getAllSales();
-        setAllSales(res.data || []); // <-- FIX HERE
-      } else {
+        console.log("Admin - fetched all sales:", res.data?.length || 0);
+        setAllSales(res.data || []);
+      } else if (role === "storekeeper") {
         const res = await getMySales();
-        setSales(res.data || []); // <-- store only MY sales
+        console.log("Storekeeper - fetched my sales:", res.data?.length || 0);
+        setSales(res.data || []);
       }
     } catch (err) {
-      if (err.response?.status === 403) {
-        console.log("Not logged in yet — skipping sales fetch.");
-      } else {
-        console.error("Error fetching sales:", err);
-      }
+      console.error("Error fetching sales:", err);
+      setError(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [role]);
 
-  // === Record sale (storekeeper) ===
+  // --- Record sale (storekeeper) ---
   const recordSale = async (saleData) => {
     try {
       setLoading(true);
-
-      // ⬅ API RESPONSE STRUCTURE
       const res = await createSale(saleData);
       const { sale, updatedProduct } = res.data;
 
-      // 1️⃣ Update sales list in real-time
       setSales((prev) => [...prev, sale]);
-
-      // 2️⃣ Update today's sales
       setTodaysSales((prev) => [...prev, sale]);
-
-      // INSTANT local inventory update
       updateLocalProductQuantity(updatedProduct);
 
       return sale;
@@ -69,11 +88,17 @@ export const SalesProvider = ({ children, role }) => {
     }
   };
 
-  // === Delete sale (admin only) ===
+  // --- Delete sale (admin only) ---
   const removeSale = async (id) => {
     try {
       await deleteSale(id);
-      setSales((prev = []) => prev.filter((s) => s._id !== id));
+
+      if (role === "admin") {
+        setAllSales((prev) => prev.filter((s) => s._id !== id));
+      } else {
+        setSales((prev) => prev.filter((s) => s._id !== id));
+      }
+
       await fetchTodaysSales();
       await fetchProducts();
     } catch (err) {
@@ -81,24 +106,55 @@ export const SalesProvider = ({ children, role }) => {
     }
   };
 
-  // === Get today's sales summary ===
-  const fetchTodaysSales = async () => {
+  // --- Fetch today's sales ---
+  const fetchTodaysSales = useCallback(async () => {
     try {
       const res = await getTodaysSales();
-      setTodaysSales(res.data || []); // fallback to empty array
-    } catch (err) {
-      if (err.response?.status === 403) {
-        console.log("Not logged in yet — skipping today's sales fetch.");
+      // API may return either an array or { message: 'No sales today yet' }
+      if (res.data && res.data.message) {
+        setTodaysSales([]);
+        setTodaysMessage(res.data.message);
       } else {
-        console.error("Error fetching today's sales:", err);
+        setTodaysSales(res.data || []);
+        setTodaysMessage(null);
       }
-      setTodaysSales([]); // ensure array
+    } catch (err) {
+      console.error("Error fetching today's sales:", err);
+      setTodaysSales([]);
+      setTodaysMessage(null);
     }
-  };
+  }, []);
 
+  // --- Initial load on mount ---
   useEffect(() => {
-    fetchSales();
-    fetchTodaysSales();
+    console.log("SalesProvider mounted, fetching user role...");
+    fetchUserRole();
+
+    // Re-fetch user role when window regains focus (user switches back to tab)
+    const handleFocus = () => {
+      console.log("Window focused, re-checking user role...");
+      fetchUserRole();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [fetchUserRole]);
+
+  // --- Fetch sales and today's sales when role changes ---
+  useEffect(() => {
+    if (!role) {
+      console.log("No role set yet, skipping data fetch");
+      return;
+    }
+
+    console.log("Role changed to:", role, "Fetching sales...");
+
+    (async () => {
+      await fetchSales();
+      await fetchTodaysSales();
+      console.log("Sales data fetched for role:", role);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
 
   return (
@@ -107,8 +163,10 @@ export const SalesProvider = ({ children, role }) => {
         sales,
         allSales,
         todaysSales,
+        todaysMessage,
         loading,
         error,
+        role,
         fetchSales,
         recordSale,
         removeSale,
@@ -120,9 +178,5 @@ export const SalesProvider = ({ children, role }) => {
   );
 };
 
-// export const useSales = () => useContext(SalesContext);
-
-// --- Custom Hook ---
-export function useSales() {
-  return useContext(SalesContext);
-}
+// Note: `useSales` hook was moved to `src/context/useSales.js` to satisfy
+// fast-refresh linting rules (file should only export React components).

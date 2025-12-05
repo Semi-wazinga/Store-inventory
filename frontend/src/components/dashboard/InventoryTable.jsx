@@ -1,4 +1,4 @@
-import { useProducts } from "../../context/ProductContext";
+import { useProducts } from "../../context/useProducts";
 
 export default function InventoryTable() {
   const { products, loading } = useProducts();
@@ -7,22 +7,24 @@ export default function InventoryTable() {
   if (!products.length) return <p>No products available.</p>;
 
   return (
-    <div className='p-4 bg-white shadow rounded-2xl'>
-      <h2 className='text-lg font-semibold mb-3'>Current Inventory</h2>
-      <table className='w-full text-left border'>
+    <div className='table-responsive mb-7 bg-white p-4 shadow rounded-3'>
+      <h3 className='mb-4 text-center fw-semibold'>Current Inventory</h3>
+
+      <table className='table table-hover align-middle mb-0'>
         <thead>
-          <tr className='bg-gray-100'>
-            <th className='p-2'>#</th>
-            <th className='p-2'>Product</th>
-            <th className='p-2'>Stock</th>
+          <tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Stock</th>
           </tr>
         </thead>
+
         <tbody>
           {products.map((p, i) => (
-            <tr key={p._id} className='border-t'>
-              <td className='p-2'>{i + 1}</td>
-              <td className='p-2'>{p.name}</td>
-              <td className='p-2'>{p.quantity}</td>
+            <tr key={p._id}>
+              <td>{i + 1}</td>
+              <td>{p.name}</td>
+              <td>{p.quantity}</td>
             </tr>
           ))}
         </tbody>

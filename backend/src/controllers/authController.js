@@ -13,10 +13,11 @@ const signToken = (user) => {
 
 // === Helper: Set Token Cookie ===
 const setTokenCookie = (res, token) => {
+  const isProd = process.env.NODE_ENV === "production";
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // true only for HTTPS
-    sameSite: "strict",
+    secure: isProd, // HTTPS in production
+    sameSite: isProd ? "none" : "lax", // "lax" for localhost, "none" for production cross-site
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
@@ -32,7 +33,9 @@ exports.register = async (req, res, next) => {
 
     // If a logged-in user exists and isn’t admin, deny registration
     if (req.user && req.user.role !== "admin")
-      return res.status(403).json({ error: "Only admin can register new users" });
+      return res
+        .status(403)
+        .json({ error: "Only admin can register new users" });
 
     // Check for duplicate email
     const existingUser = await User.findOne({ email });
@@ -90,6 +93,10 @@ exports.login = async (req, res, next) => {
     const token = signToken(user);
     setTokenCookie(res, token);
 
+    console.log("=== LOGIN DEBUG ===");
+    console.log("User logging in:", user.email, "ID:", user._id);
+    console.log("Token issued:", token.substring(0, 20) + "...");
+
     res.json({
       message: "Login successful",
       user: {
@@ -108,18 +115,19 @@ exports.login = async (req, res, next) => {
 
 // === LOGOUT ===
 exports.logout = async (req, res) => {
+  const isProd = process.env.NODE_ENV === "production";
+
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
   });
   res.status(200).json({ message: "Logged out successfully" });
 };
 
 // === ME (Current Authenticated User) ===
 exports.me = async (req, res) => {
-  if (!req.user)
-    return res.status(401).json({ error: "Not authenticated" });
+  if (!req.user) return res.status(401).json({ error: "Not authenticated" });
 
   res.json({
     user: {
@@ -131,22 +139,11 @@ exports.me = async (req, res) => {
   });
 };
 
-
-
-
-
-
-
-
-
-
-
-
 // const bcrypt = require('bcryptjs')
 // const jwt = require('jsonwebtoken')
 // const User = require('../models/user')
 
-// //  Sign JWT Token 
+// //  Sign JWT Token
 // const signToken = (user) => {
 //   return jwt.sign(
 //     { id: user._id, email: user.email, role: user.role },
@@ -203,7 +200,7 @@ exports.me = async (req, res) => {
 //   }
 // };
 
-// // LOGIN 
+// // LOGIN
 // exports.login = async (req, res, next) => {
 //   try {
 //     const { email, password } = req.body;

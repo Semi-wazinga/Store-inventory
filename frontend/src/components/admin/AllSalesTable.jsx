@@ -1,49 +1,100 @@
-import { useSales } from "../../context/SalesContext";
+import { useSales } from "../../context/useSales";
 
 export default function AllSalesTable() {
-  const { allSales, loading, fetchSales, deleteSale } = useSales();
+  const { allSales, sales, role, loading, fetchSales, removeSale } = useSales();
 
   const handleDelete = async (id) => {
     if (window.confirm("Delete this sale record?")) {
-      await deleteSale(id);
+      await removeSale(id);
       await fetchSales();
     }
   };
 
   if (loading) return <p>Loading sales...</p>;
-  if (!allSales || allSales.length === 0) return <p>No sales yet.</p>;
+
+  const salesToDisplay = role === "admin" ? allSales : sales;
 
   return (
-    <div className='p-4 bg-white shadow rounded-2xl'>
-      <h2 className='text-lg font-semibold mb-3'>All Sales Records</h2>
-      <table className='w-full text-left border'>
+    <div className='table-responsive mb-7 bg-white p-4 shadow rounded-3'>
+      <h3 className='mb-4 text-center fw-semibold'>
+        {role === "admin" ? "All Sales Records" : "My Sales Records"}
+      </h3>
+
+      <table className='table table-hover table-round align-middle mb-0'>
         <thead>
-          <tr className='bg-gray-100'>
-            <th className='p-2'>#</th>
-            <th className='p-2'>Product</th>
-            <th className='p-2'>Quantity</th>
-            <th className='p-2'>Sold By</th>
-            <th className='p-2'>Date</th>
-            <th className='p-2'>Actions</th>
+          <tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Qty</th>
+            {role === "admin" && <th>Sold By</th>}
+            <th>Date</th>
+            <th style={{ width: "150px" }}>Actions</th>
           </tr>
         </thead>
+
         <tbody>
-          {allSales.map((s, i) => (
-            <tr key={s._id} className='border-t'>
-              <td className='p-2'>{i + 1}</td>
-              <td className='p-2'>{s.product?.name}</td>
-              <td className='p-2'>{s.quantity}</td>
-              <td className='p-2'>{s.soldBy?.name}</td>
-              <td className='p-2'>
-                {new Date(s.createdAt).toLocaleDateString()}
+          {(!salesToDisplay || salesToDisplay.length === 0) && (
+            <tr>
+              <td
+                colSpan={role === "admin" ? 6 : 5}
+                className='text-center py-4 fw-semibold'
+              >
+                No sales found
               </td>
-              <td className='p-2'>
-                <button
-                  onClick={() => handleDelete(s._id)}
-                  className='bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600'
-                >
-                  Delete
-                </button>
+            </tr>
+          )}
+
+          {salesToDisplay.map((s, index) => (
+            <tr key={s._id}>
+              {/* Index */}
+              <td>{index + 1}</td>
+
+              {/* Product Avatar + Name */}
+              <td>
+                <div className='d-flex align-items-center'>
+                  <div className='avatar text-primary'>
+                    <i className='fs-4' data-duoicon='shopping-bag'></i>
+                  </div>
+
+                  <div className='ms-3'>
+                    <div className='fw-semibold'>
+                      {s.product?.name || "Unknown Product"}
+                    </div>
+                    <div className='text-muted small'>
+                      {s.product?.category || "No category"}
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              {/* Quantity Badge */}
+              <td>
+                <span className='badge bg-primary-subtle text-primary'>
+                  {s.quantity}
+                </span>
+              </td>
+
+              {/* Sold By (admin only) */}
+              {role === "admin" && (
+                <td>
+                  <div className='fw-semibold'>{s.soldBy?.name}</div>
+                  <div className='text-muted small'>{s.soldBy?.role}</div>
+                </td>
+              )}
+
+              {/* Date */}
+              <td>{new Date(s.createdAt).toLocaleDateString()}</td>
+
+              {/* Actions */}
+              <td>
+                <div className='d-flex gap-2'>
+                  <button
+                    className='btn btn-sm btn-danger'
+                    onClick={() => handleDelete(s._id)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useProducts } from "../../context/ProductContext";
+import { useProducts } from "../../context/useProducts";
 
 export default function AddProductForm() {
   const { addProduct, fetchProducts } = useProducts();
@@ -46,50 +46,69 @@ export default function AddProductForm() {
   };
 
   return (
-    <div className='p-4 bg-white shadow rounded-2xl'>
-      <h2 className='text-lg font-semibold mb-3'>Add New Product</h2>
+    <div className='bg-white shadow rounded-3 p-4'>
+      <h3 className='mb-4 text-center fw-semibold'>Add New Product</h3>
 
-      <form onSubmit={handleSubmit} className='flex flex-col gap-3'>
-        <input
-          name='name'
-          value={form.name}
-          onChange={handleChange}
-          className='border p-2 rounded-md'
-          placeholder='Product Name'
-        />
+      <form onSubmit={handleSubmit} className='row g-3'>
+        {/* Product Name + Category (Same Row) */}
+        <div className='col-md-6'>
+          <label className='form-label'>Product Name</label>
+          <input
+            type='text'
+            name='name'
+            value={form.name}
+            onChange={handleChange}
+            className='form-control form-control-lg'
+            placeholder='Enter product name'
+            required
+          />
+        </div>
 
-        <input
-          name='category'
-          value={form.category}
-          onChange={handleChange}
-          className='border p-2 rounded-md'
-          placeholder='Category'
-        />
+        <div className='col-md-6'>
+          <label className='form-label'>Category</label>
+          <input
+            type='text'
+            name='category'
+            value={form.category}
+            onChange={handleChange}
+            className='form-control form-control-lg'
+            placeholder='Enter category'
+            required
+          />
+        </div>
 
-        <input
-          name='quantity'
-          type='number'
-          value={form.quantity}
-          onChange={handleChange}
-          className='border p-2 rounded-md'
-          placeholder='Quantity'
-        />
+        {/* Quantity + Price (Same Row) */}
+        <div className='col-md-6'>
+          <label className='form-label'>Quantity</label>
+          <input
+            type='number'
+            name='quantity'
+            value={form.quantity}
+            onChange={handleChange}
+            className='form-control form-control-lg'
+            placeholder='Enter quantity'
+          />
+        </div>
 
-        <input
-          name='price'
-          type='number'
-          value={form.price}
-          onChange={handleChange}
-          className='border p-2 rounded-md'
-          placeholder='Price'
-        />
+        <div className='col-md-6'>
+          <label className='form-label'>Price</label>
+          <input
+            type='number'
+            name='price'
+            value={form.price}
+            onChange={handleChange}
+            className='form-control form-control-lg'
+            placeholder='Enter price'
+            required
+          />
+        </div>
 
-        <button
-          type='submit'
-          className='bg-green-600 text-white rounded-md p-2 hover:bg-green-700'
-        >
-          Add Product
-        </button>
+        {/* Submit Button */}
+        <div className='col-12 mt-3'>
+          <button type='submit' className='btn btn-success btn-lg w-100'>
+            Add Product
+          </button>
+        </div>
       </form>
     </div>
   );

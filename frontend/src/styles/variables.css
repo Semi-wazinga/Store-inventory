@@ -1,0 +1,43 @@
+:root {
+  /* Palette A - Modern Blue */
+  --color-primary: #0B63CE;
+  --color-primary-hover: #0954A8;
+  --color-accent: #00B4D8;
+
+  /* Neutrals */
+  --color-bg: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-muted: #475569;
+  --color-text: #0F1724;
+
+  /* States */
+  --color-success: #16A34A;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+
+  /* Misc */
+  --radius: 8px;
+  --shadow-sm: 0 1px 3px rgba(2,6,23,0.06);
+}
+
+/* Utility classes using the variables */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: #fff;
+  border: none;
+}
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.card-surface {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}

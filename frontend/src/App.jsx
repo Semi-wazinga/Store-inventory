@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { StoreKeeper, AdminDashboard, Login } from "./pages";
+import { StoreKeeper, AdminDashboard, Login, Register } from "./pages";
 import Navbar from "./components/Navbar";
 import { SalesProvider } from "./context/SalesContext";
 import { ProductProvider } from "./context/ProductContext";
@@ -16,6 +16,7 @@ function App() {
             <div>
               <Routes>
                 <Route path='/' element={<Login />} />
+                <Route path='/register' element={<Register />} />
                 <Route
                   path='/admin'
                   element={

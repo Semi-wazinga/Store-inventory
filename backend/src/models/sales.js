@@ -18,7 +18,7 @@ const salesSchema = new mongoose.Schema(
     },
     soldBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "user",
       required: false,
     },
   },

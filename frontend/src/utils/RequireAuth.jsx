@@ -28,7 +28,7 @@ const RequireAuth = ({ children }) => {
 
   if (loading) return <p>Checking authentication...</p>;
 
-  return isAuthenticated ? children : <Navigate to='/login' replace />;
+  return isAuthenticated ? children : <Navigate to='/' replace />;
 };
 
 export default RequireAuth;
