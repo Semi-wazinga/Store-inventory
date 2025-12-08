@@ -7,7 +7,7 @@ export default function AllSalesTable() {
   const { fetchProducts } = useProducts();
 
   // Pagination
-  const itemsPerPage = 20;
+  const itemsPerPage = 10;
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleDelete = async (id) => {

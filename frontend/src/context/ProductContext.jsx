@@ -94,7 +94,6 @@ export const ProductProvider = ({ children }) => {
         fetchProducts,
         addProduct,
         editProduct,
-        removeProduct,
         // backward-compatible alias: some components expect `deleteProduct`
         deleteProduct: removeProduct,
         updateLocalProductQuantity,
