@@ -1,18 +1,38 @@
+import { useState } from "react";
 import { useSales } from "../../context/useSales";
+import { useProducts } from "../../context/useProducts";
 
 export default function AllSalesTable() {
   const { allSales, sales, role, loading, fetchSales, removeSale } = useSales();
+  const { fetchProducts } = useProducts();
+
+  // Pagination
+  const itemsPerPage = 20;
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleDelete = async (id) => {
     if (window.confirm("Delete this sale record?")) {
       await removeSale(id);
       await fetchSales();
+      await fetchProducts();
     }
   };
 
   if (loading) return <p>Loading sales...</p>;
 
   const salesToDisplay = role === "admin" ? allSales : sales;
+
+  // PAGINATION LOGIC
+  const totalPages = Math.ceil(salesToDisplay.length / itemsPerPage);
+
+  const startIdx = (currentPage - 1) * itemsPerPage;
+  const currentSales = salesToDisplay.slice(startIdx, startIdx + itemsPerPage);
+
+  const changePage = (page) => {
+    if (page > 0 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   return (
     <div className='table-responsive mb-7 bg-white p-4 shadow rounded-3'>
@@ -33,7 +53,7 @@ export default function AllSalesTable() {
         </thead>
 
         <tbody>
-          {(!salesToDisplay || salesToDisplay.length === 0) && (
+          {currentSales.length === 0 && (
             <tr>
               <td
                 colSpan={role === "admin" ? 6 : 5}
@@ -44,18 +64,12 @@ export default function AllSalesTable() {
             </tr>
           )}
 
-          {salesToDisplay.map((s, index) => (
+          {currentSales.map((s, index) => (
             <tr key={s._id}>
-              {/* Index */}
-              <td>{index + 1}</td>
+              <td>{startIdx + index + 1}</td>
 
-              {/* Product Avatar + Name */}
               <td>
                 <div className='d-flex align-items-center'>
-                  <div className='avatar text-primary'>
-                    <i className='fs-4' data-duoicon='shopping-bag'></i>
-                  </div>
-
                   <div className='ms-3'>
                     <div className='fw-semibold'>
                       {s.product?.name || "Unknown Product"}
@@ -67,14 +81,12 @@ export default function AllSalesTable() {
                 </div>
               </td>
 
-              {/* Quantity Badge */}
               <td>
                 <span className='badge bg-primary-subtle text-primary'>
                   {s.quantity}
                 </span>
               </td>
 
-              {/* Sold By (admin only) */}
               {role === "admin" && (
                 <td>
                   <div className='fw-semibold'>{s.soldBy?.name}</div>
@@ -82,10 +94,8 @@ export default function AllSalesTable() {
                 </td>
               )}
 
-              {/* Date */}
               <td>{new Date(s.createdAt).toLocaleDateString()}</td>
 
-              {/* Actions */}
               <td>
                 <div className='d-flex gap-2'>
                   <button
@@ -100,6 +110,56 @@ export default function AllSalesTable() {
           ))}
         </tbody>
       </table>
+
+      {/* PAGINATION UI */}
+      {totalPages > 1 && (
+        <div className='d-flex justify-content-center mt-4'>
+          <nav>
+            <ul className='pagination'>
+              {/* Prev Button */}
+              <li className={`page-item ${currentPage === 1 && "disabled"}`}>
+                <button
+                  className='page-link'
+                  onClick={() => changePage(currentPage - 1)}
+                >
+                  Prev
+                </button>
+              </li>
+
+              {/* Page Numbers */}
+              {Array.from({ length: totalPages }, (_, i) => (
+                <li
+                  key={i}
+                  className={`page-item ${
+                    currentPage === i + 1 ? "active" : ""
+                  }`}
+                >
+                  <button
+                    className='page-link'
+                    onClick={() => changePage(i + 1)}
+                  >
+                    {i + 1}
+                  </button>
+                </li>
+              ))}
+
+              {/* Next Button */}
+              <li
+                className={`page-item ${
+                  currentPage === totalPages && "disabled"
+                }`}
+              >
+                <button
+                  className='page-link'
+                  onClick={() => changePage(currentPage + 1)}
+                >
+                  Next
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      )}
     </div>
   );
 }
