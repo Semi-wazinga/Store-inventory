@@ -159,23 +159,6 @@ export const SalesProvider = ({ children }) => {
     return () => window.removeEventListener("focus", handleFocus);
   }, [fetchUserRole]);
 
-  // // --- Fetch sales and today's sales when role changes ---
-  // useEffect(() => {
-  //   if (!role) {
-  //     console.log("No role set yet, skipping data fetch");
-  //     return;
-  //   }
-
-  //   console.log("Role changed to:", role, "Fetching sales...");
-
-  //   (async () => {
-  //     await fetchSales();
-  //     await fetchTodaysSales();
-  //     console.log("Sales data fetched for role:", role);
-  //   })();
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [role]);
-
   return (
     <SalesContext.Provider
       value={{
@@ -200,4 +183,3 @@ export const SalesProvider = ({ children }) => {
 };
 
 // Note: `useSales` hook was moved to `src/context/useSales.js` to satisfy
-// fast-refresh linting rules (file should only export React components).
