@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSales } from "../context/useSales";
 import {
   Container,
   Row,
@@ -19,6 +20,7 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { loginSuccess } = useSales();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -34,12 +36,12 @@ const LoginPage = () => {
 
       const user = res.data.user;
 
+      loginSuccess();
+
       // Wait a moment for cookie to be set, then navigate
-      setTimeout(() => {
-        if (user.role === "admin") navigate("/admin");
-        else if (user.role === "storekeeper") navigate("/store");
-        else setError("Unauthorized role");
-      }, 300);
+      if (user.role === "admin") navigate("/admin");
+      else if (user.role === "storekeeper") navigate("/store");
+      else setError("Unauthorized role");
     } catch (err) {
       setError(
         err.response?.data?.message || "Login failed. Please check credentials."

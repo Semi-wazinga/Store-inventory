@@ -3,7 +3,7 @@ import { useProducts } from "../../context/useProducts";
 import { useSales } from "../../context/useSales";
 
 export default function RecordSaleForm() {
-  const { products } = useProducts();
+  const { products, updateLocalProductQuantity } = useProducts();
   const { recordSale } = useSales();
   const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -13,7 +13,14 @@ export default function RecordSaleForm() {
     if (!productId || !quantity) return alert("Select a product and quantity");
 
     try {
-      await recordSale({ productId, quantity: Number(quantity) });
+      // 1. Call recordSale, capturing the returned object
+      const { updatedProduct } = await recordSale({
+        productId,
+        quantity: Number(quantity),
+      });
+
+      // 2. Use the local update function with the data returned from the sale
+      updateLocalProductQuantity(updatedProduct);
       alert("Sale recorded successfully!");
       setProductId("");
       setQuantity("");

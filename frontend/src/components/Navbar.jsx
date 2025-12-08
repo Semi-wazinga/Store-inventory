@@ -1,17 +1,29 @@
 import { Link, useNavigate } from "react-router-dom";
 import { logoutUser } from "../api/api";
+import { useSales } from "../context/useSales";
+
 import "./Navbar.css";
 
 const Navbar = () => {
+  const { resetContexts: resetSales } = useSales();
+
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
       await logoutUser();
-      navigate("/");
-      window.location.reload(); // Force reload to reset all context
+
+      // 1. Explicitly reset all state contexts
+      resetSales();
+
+      // ⚠️ IMPORTANT: Force React to fully re-mount all components
+      navigate("/", { replace: true });
     } catch (err) {
       console.error("Logout failed:", err);
+      // Reset state even if API fails to clean up locally
+      resetSales();
+
+      navigate("/", { replace: true });
     }
   };
 

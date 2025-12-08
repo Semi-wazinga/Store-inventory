@@ -9,10 +9,10 @@ import RequireAdmin from "./utils/RequireAdmin";
 function App() {
   return (
     <>
-      <BrowserRouter>
-        <Navbar />
+      <SalesProvider>
         <ProductProvider>
-          <SalesProvider>
+          <BrowserRouter>
+            <Navbar />
             <div>
               <Routes>
                 <Route path='/' element={<Login />} />
@@ -35,9 +35,9 @@ function App() {
                 />
               </Routes>
             </div>
-          </SalesProvider>
+          </BrowserRouter>
         </ProductProvider>
-      </BrowserRouter>
+      </SalesProvider>
     </>
   );
 }
