@@ -1,10 +1,21 @@
-const router = require('express').Router();
-const {register, login, logout, me} = require('../controllers/authController')
-const {requireAuth, requireAdmin, requireStorekeeper} = require('../middlewares/auth')
+const router = require("express").Router();
+const {
+  register,
+  login,
+  logout,
+  me,
+} = require("../controllers/authController");
+const {
+  requireAuth,
+  requireAdmin,
+  requireStorekeeper,
+} = require("../middlewares/auth");
+const validate = require("../middlewares/validate");
+const { registerSchema, loginSchema } = require("../validators/authValidator");
 
 // Public
-router.post("/register", register); // you can later restrict this to admin only
-router.post("/login", login);
+router.post("/register", validate(registerSchema), register); // you can later restrict this to admin only
+router.post("/login", validate(loginSchema), login);
 
 // Protected
 router.get("/me", requireAuth, me);
