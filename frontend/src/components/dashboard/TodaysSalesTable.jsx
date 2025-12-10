@@ -1,13 +1,24 @@
 import { useSales } from "../../context/useSales";
-import { Card, Table, Badge } from "react-bootstrap";
+import { Card, Table, Badge, Pagination } from "react-bootstrap";
+import { useState } from "react";
 
 export default function TodaysSalesTable() {
   const { todaysSales, loading, todaysMessage, role } = useSales();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // 5 sales per page
 
   if (!role || loading) return <p>Loading today's sales...</p>;
   if (todaysMessage) return <p>{todaysMessage}</p>;
   if (!todaysSales || todaysSales.length === 0)
     return <p>No sales recorded yet.</p>;
+
+  // Pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentSales = todaysSales.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(todaysSales.length / itemsPerPage);
+
+  const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
     <Card className='p-4 shadow-sm mb-4'>
@@ -25,19 +36,30 @@ export default function TodaysSalesTable() {
           </tr>
         </thead>
         <tbody>
-          {todaysSales.map((s, i) => (
+          {currentSales.map((s, i) => (
             <tr key={s._id}>
-              <td>{i + 1}</td>
+              <td>{indexOfFirstItem + i + 1}</td>
               <td>{s.product?.name || "Product Deleted"}</td>
-              <td>
-                <Badge bg='primary'>{s.quantity}</Badge>
-              </td>
+              <td>{s.quantity}</td>
               <td>{new Date(s.createdAt).toLocaleDateString()}</td>
               {role === "admin" && <td>{s.soldBy?.name || "Unknown"}</td>}
             </tr>
           ))}
         </tbody>
       </Table>
+
+      {/* Pagination */}
+      <Pagination className='justify-content-center mt-3'>
+        {Array.from({ length: totalPages }, (_, i) => (
+          <Pagination.Item
+            key={i + 1}
+            active={i + 1 === currentPage}
+            onClick={() => handlePageChange(i + 1)}
+          >
+            {i + 1}
+          </Pagination.Item>
+        ))}
+      </Pagination>
     </Card>
   );
 }

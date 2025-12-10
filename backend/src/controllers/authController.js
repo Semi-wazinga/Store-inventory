@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const { loginSchema, registerSchema } = require("../validators/authValidator");
 
 // === Helper: Sign JWT ===
 const signToken = (user) => {
@@ -16,41 +17,59 @@ const setTokenCookie = (res, token) => {
   const isProd = process.env.NODE_ENV === "production";
   res.cookie("token", token, {
     httpOnly: true,
-    secure: isProd, // HTTPS in production
-    sameSite: isProd ? "none" : "lax", // "lax" for localhost, "none" for production cross-site
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 
 // === REGISTER ===
-// (Only admin can register other users)
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    // Validate request body using registerSchema
+    const { error, value } = registerSchema.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      const errors = error.details.map((err) => ({
+        field: err.path[0],
+        message: err.message,
+      }));
+      return res.status(400).json({ errors });
+    }
 
-    if (!name || !email || !password)
-      return res.status(400).json({ error: "Missing fields" });
+    const { name, email, password, role } = value;
 
-    // If a logged-in user exists and isn’t admin, deny registration
-    if (req.user && req.user.role !== "admin")
-      return res
-        .status(403)
-        .json({ error: "Only admin can register new users" });
+    // Only admin can register users if logged in
+    if (req.user && req.user.role !== "admin") {
+      return res.status(403).json({
+        errors: [
+          { field: "role", message: "Only admin can register new users" },
+        ],
+      });
+    }
 
-    // Check for duplicate email
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(409).json({ error: "Email already exists" });
+    // Check if email already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(409).json({
+        errors: [{ field: "email", message: "Email already exists" }],
+      });
+    }
+
+    // Ensure role matches schema enum
+    const validRoles = ["admin", "storekeeper"];
+    const assignedRole = validRoles.includes(role) ? role : "storekeeper";
 
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create new user
+    // Create user
     const user = await User.create({
       name,
-      email,
+      email: email.toLowerCase(),
       passwordHash,
-      role: role === "admin" ? "admin" : "storekeeper",
+      role: assignedRole,
     });
 
     // Generate token and set cookie
@@ -76,26 +95,39 @@ exports.register = async (req, res, next) => {
 // === LOGIN ===
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    // Validate request body using loginSchema
+    const { error, value } = loginSchema.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      const errors = error.details.map((err) => ({
+        field: err.path[0],
+        message: err.message,
+      }));
+      return res.status(400).json({ errors });
+    }
 
-    if (!email || !password)
-      return res.status(400).json({ error: "Missing email or password" });
+    const { email, password } = value;
 
     // Find user
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(401).json({
+        errors: [{ field: "email", message: "Email not found" }],
+      });
+    }
 
     // Compare password
     const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) return res.status(401).json({ error: "Invalid credentials" });
+    if (!match) {
+      return res.status(401).json({
+        errors: [{ field: "password", message: "Incorrect password" }],
+      });
+    }
 
     // Generate token and set cookie
     const token = signToken(user);
     setTokenCookie(res, token);
-
-    console.log("=== LOGIN DEBUG ===");
-    console.log("User logging in:", user.email, "ID:", user._id);
-    console.log("Token issued:", token.substring(0, 20) + "...");
 
     res.json({
       message: "Login successful",
@@ -116,7 +148,6 @@ exports.login = async (req, res, next) => {
 // === LOGOUT ===
 exports.logout = async (req, res) => {
   const isProd = process.env.NODE_ENV === "production";
-
   res.clearCookie("token", {
     httpOnly: true,
     secure: isProd,
@@ -138,121 +169,3 @@ exports.me = async (req, res) => {
     },
   });
 };
-
-// const bcrypt = require('bcryptjs')
-// const jwt = require('jsonwebtoken')
-// const User = require('../models/user')
-
-// //  Sign JWT Token
-// const signToken = (user) => {
-//   return jwt.sign(
-//     { id: user._id, email: user.email, role: user.role },
-//     process.env.JWT_SECRET,
-//     { expiresIn: "7d" }
-//   );
-// };
-
-// // === Helper: Set Cookie ===
-// const setTokenCookie = (res, token) => {
-//   res.cookie("token", token, {
-//     httpOnly: true,
-//     secure: process.env.NODE_ENV === "production", // true for HTTPS
-//     sameSite: "strict",
-//     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-//   });
-// };
-
-// // === REGISTER ===
-// exports.register = async (req, res, next) => {
-//   try {
-//     const { name, email, password, role } = req.body;
-//     if (!name || !email || !password)
-//       return res.status(400).json({ error: "Missing fields" });
-
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser)
-//       return res.status(409).json({ error: "Email already exists" });
-
-//     const passwordHash = await bcrypt.hash(password, 12);
-//     const user = await User.create({
-//       name,
-//       email,
-//       passwordHash,
-//       role: role || "customer",
-//     });
-
-//     const token = signToken(user);
-//     setTokenCookie(res, token);
-
-//     res.status(201).json({
-//       message: "Registration successful",
-//       user: {
-//         id: user._id,
-//         name: user.name,
-//         email: user.email,
-//         role: user.role,
-//       },
-//       token,
-//     });
-//   } catch (err) {
-//     console.error("Register Error:", err.message);
-//     next(err);
-//   }
-// };
-
-// // LOGIN
-// exports.login = async (req, res, next) => {
-//   try {
-//     const { email, password } = req.body;
-//     if (!email || !password)
-//       return res.status(400).json({ error: "Missing email or password" });
-
-//     const user = await User.findOne({ email });
-//     if (!user) return res.status(401).json({ error: "Invalid credentials" });
-
-//     const match = await bcrypt.compare(password, user.passwordHash);
-//     if (!match) return res.status(401).json({ error: "Invalid credentials" });
-
-//     const token = signToken(user);
-//     setTokenCookie(res, token);
-
-//     res.json({
-//       message: "Login successful",
-//       user: {
-//         id: user._id,
-//         name: user.name,
-//         email: user.email,
-//         role: user.role,
-//       },
-//       token,
-//     });
-//   } catch (err) {
-//     console.error("Login Error:", err.message);
-//     next(err);
-//   }
-// };
-
-// // LOGOUT
-// exports.logout = async (req, res) => {
-//   res.clearCookie("token", {
-//     httpOnly: true,
-//     secure: process.env.NODE_ENV === "production",
-//     sameSite: "strict",
-//   });
-//   res.status(200).json({ message: "Logged out successfully" });
-// };
-
-// // === ME (Current Authenticated User) ===
-// exports.me = async (req, res) => {
-//   if (!req.user)
-//     return res.status(401).json({ error: "Not authenticated" });
-
-//   res.json({
-//     user: {
-//       id: req.user._id,
-//       name: req.user.name,
-//       email: req.user.email,
-//       role: req.user.role,
-//     },
-//   });
-// };
