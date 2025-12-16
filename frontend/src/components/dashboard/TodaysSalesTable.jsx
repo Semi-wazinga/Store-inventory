@@ -5,20 +5,17 @@ import { useState } from "react";
 export default function TodaysSalesTable() {
   const { todaysSales, loading, todaysMessage, role } = useSales();
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // 5 sales per page
+  const itemsPerPage = 5;
 
   if (!role || loading) return <p>Loading today's sales...</p>;
   if (todaysMessage) return <p>{todaysMessage}</p>;
   if (!todaysSales || todaysSales.length === 0)
     return <p>No sales recorded yet.</p>;
 
-  // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentSales = todaysSales.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(todaysSales.length / itemsPerPage);
-
-  const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
     <Card className='p-4 shadow-sm mb-4'>
@@ -48,13 +45,12 @@ export default function TodaysSalesTable() {
         </tbody>
       </Table>
 
-      {/* Pagination */}
       <Pagination className='justify-content-center mt-3'>
         {Array.from({ length: totalPages }, (_, i) => (
           <Pagination.Item
             key={i + 1}
             active={i + 1 === currentPage}
-            onClick={() => handlePageChange(i + 1)}
+            onClick={() => setCurrentPage(i + 1)}
           >
             {i + 1}
           </Pagination.Item>

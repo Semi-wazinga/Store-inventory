@@ -1,15 +1,31 @@
 .login-page {
   min-height: 100vh;
-  background: #f8f9fa;
+  background-color: var(--color-primary); /* 60% */
+  color: #ffffff;
 }
+
+/* .form-control:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(11, 99, 206, 0.15);
+} */
 
 .card {
-  border-radius: 1rem;
+  background-color: var(--color-surface); /* 10% */
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
 }
 
-h1,
+h1 {
+  color: #ffffff; /* on primary bg */
+}
+
 h3 {
-  font-weight: 700;
+  color: var(--color-text); /* inside card */
+}
+
+.text-muted {
+  color: var(--color-muted) !important;
 }
 
 a {

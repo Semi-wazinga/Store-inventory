@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSales } from "../context/useSales";
 import {
@@ -12,16 +12,16 @@ import {
   Spinner,
 } from "react-bootstrap";
 import axios from "axios";
+import "./LoginPage.css";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { loginSuccess, role } = useSales();
+  const { loginSuccess } = useSales();
 
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState({});
   const [generalError, setGeneralError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loginAttempted, setLoginAttempted] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -40,8 +40,13 @@ const LoginPage = () => {
         withCredentials: true,
       });
 
-      await loginSuccess();
-      setLoginAttempted(true);
+      // Use loginSuccess from context to fetch user role immediately
+      const userRole = await loginSuccess();
+
+      // Redirect based on role
+      if (userRole.toLowerCase() === "admin") navigate("/admin");
+      else if (userRole.toLowerCase() === "storekeeper") navigate("/store");
+      else setGeneralError("Unauthorized role");
     } catch (err) {
       const serverErrors = err.response?.data?.errors;
 
@@ -62,35 +67,23 @@ const LoginPage = () => {
     }
   };
 
-  // Automatic navigation after login
-  useEffect(() => {
-    if (!loginAttempted) return;
-    if (!role) return;
-
-    if (role.toLowerCase() === "admin") navigate("/admin");
-    else if (role.toLowerCase() === "storekeeper") navigate("/store");
-    else setGeneralError("Unauthorized role");
-  }, [role, loginAttempted, navigate]);
-
   return (
     <div
-      className='d-flex align-items-center justify-content-center'
-      style={{ minHeight: "100vh", background: "#f8f9fa" }}
+      className='login-page d-flex align-items-center justify-content-center'
+      style={{ minHeight: "100vh", background: "#0b63ce" }}
     >
       <Container>
         <Row className='justify-content-center align-items-center'>
-          {/* Left Side Content */}
           <Col
             md={6}
             className='d-flex flex-column justify-content-center mb-4 mb-md-0'
           >
-            <h1 className='fs-1 fw-bold'>Sign in</h1>
-            <p className='lead text-muted'>
+            <h1 className='fs-1 fw-bold text-center'>Sign in</h1>
+            <p className='lead text-dark text-bold text-center'>
               Access your dashboard and start managing your store efficiently.
             </p>
           </Col>
 
-          {/* Right Side Card */}
           <Col md={5}>
             <Card className='p-4 shadow rounded-3'>
               <h3 className='text-center mb-4'>Login</h3>

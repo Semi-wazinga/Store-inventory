@@ -11,20 +11,19 @@ import {
 } from "../api/api";
 
 export const SalesProvider = ({ children }) => {
-  const [sales, setSales] = useState([]); // storekeeper sales
-  const [allSales, setAllSales] = useState([]); // admin sales
+  const [sales, setSales] = useState([]);
+  const [allSales, setAllSales] = useState([]);
   const [todaysSales, setTodaysSales] = useState([]);
   const [todaysMessage, setTodaysMessage] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [role, setRole] = useState(null);
 
-  // --- Fetch today's sales ---
+  // ---------------- FETCH TODAY'S SALES ----------------
   const fetchTodaysSales = useCallback(async () => {
     try {
       const res = await getTodaysSales();
-      // API may return either an array or { message: 'No sales today yet' }
-      if (res.data && res.data?.message) {
+
+      if (res.data?.message) {
         setTodaysSales([]);
         setTodaysMessage(res.data.message);
       } else {
@@ -38,54 +37,38 @@ export const SalesProvider = ({ children }) => {
     }
   }, []);
 
-  // --- Fetch sales based on role ---
+  // ---------------- FETCH ROLE SALES ----------------
   const fetchSales = useCallback(async (currentRole) => {
-    // Takes role as argument now
-    if (!currentRole) {
-      console.log("fetchSales called but no role set, returning");
-      return;
-    }
+    if (!currentRole) return;
 
     try {
-      console.log("Fetching sales for role:", currentRole);
       setLoading(true);
 
       if (currentRole === "admin") {
         const res = await getAllSales();
-        console.log("Admin - fetched all sales:", res.data?.length || 0);
         setAllSales(res.data || []);
-      } else if (currentRole === "storekeeper") {
+      } else {
         const res = await getMySales();
-        console.log("Storekeeper - fetched my sales:", res.data?.length || 0);
         setSales(res.data || []);
       }
     } catch (err) {
       console.error("Error fetching sales:", err);
-      setError(err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // --- Fetch current user to determine role ---
+  // ---------------- FETCH USER ROLE ----------------
   const fetchUserRole = useCallback(async () => {
     try {
-      console.log("Fetching user role...");
       const res = await getCurrentUser();
       const newRole = res.data.user.role;
-      console.log("User role fetched:", newRole);
 
-      // --- 1. SET ROLE STATE ---
       setRole(newRole);
 
-      // --- 2. IMMEDIATELY TRIGGER DATA FETCHES (Fire and forget promises) ---
-      // Do not await these, allow them to run in parallel
       fetchSales(newRole);
       fetchTodaysSales();
-
-      // This relies on ProductProvider listening to the role change, which is fine.
-    } catch (err) {
-      console.warn("User not logged in yet", err);
+    } catch {
       setRole(null);
       setSales([]);
       setAllSales([]);
@@ -94,32 +77,23 @@ export const SalesProvider = ({ children }) => {
     }
   }, [fetchSales, fetchTodaysSales]);
 
-  // --- New: call this after a successful login ---
-  const loginSuccess = useCallback(() => {
-    fetchUserRole();
-  }, [fetchUserRole]);
-
-  // --- Global Context Reset Function ---
-  const resetContexts = useCallback(() => {
-    console.log("--- EXPLICITLY RESETTING SALES CONTEXT STATE ---");
-    setSales([]);
-    setAllSales([]);
-    setTodaysSales([]);
-    setTodaysMessage(null);
-    setRole(null);
-  }, []);
-
-  // --- Record sale (storekeeper) ---
+  // ---------------- RECORD SALE (FIXED) ----------------
   const recordSale = async (saleData) => {
     try {
       setLoading(true);
+
       const res = await createSale(saleData);
-      const { sale, updatedProduct } = res.data;
+      const { updatedProduct } = res.data;
 
-      setSales((prev) => [...prev, sale]);
-      setTodaysSales((prev) => [...prev, sale]);
+      // ✅ update inventory immediately
+      if (updatedProduct) {
+        window.dispatchEvent(
+          new CustomEvent("product-updated", { detail: updatedProduct })
+        );
+      }
 
-      return { sale, updatedProduct };
+      await fetchTodaysSales();
+      await fetchSales(role);
     } catch (err) {
       throw err.response?.data || err;
     } finally {
@@ -127,34 +101,47 @@ export const SalesProvider = ({ children }) => {
     }
   };
 
-  // --- Delete sale (admin only) ---
+  // ---------------- DELETE SALE ----------------
   const removeSale = async (id) => {
     try {
       await deleteSale(id);
-
-      if (role === "admin") {
-        setAllSales((prev) => prev.filter((s) => s._id !== id));
-      } else {
-        setSales((prev) => prev.filter((s) => s._id !== id));
+    } catch (err) {
+      // Ignore 404 errors
+      if (err.response?.status !== 404) {
+        throw err.response?.data || err;
       }
-
+    } finally {
       await fetchTodaysSales();
+      await fetchSales(role);
+    }
+  };
+
+  const resetContexts = () => {
+    setSales([]);
+    setAllSales([]);
+    setTodaysSales([]);
+    setTodaysMessage(null);
+    setRole(null);
+  };
+
+  const loginSuccess = async () => {
+    try {
+      const res = await getCurrentUser();
+      const newRole = res.data.user.role;
+      setRole(newRole);
+      await fetchSales(newRole);
+      await fetchTodaysSales();
+      return newRole; // resolves role so caller knows
     } catch (err) {
       throw err.response?.data || err;
     }
   };
 
-  // --- Initial load on mount ---
+  // ---------------- INIT ----------------
   useEffect(() => {
-    console.log("SalesProvider mounted, fetching user role...");
     fetchUserRole();
 
-    // Re-fetch user role when window regains focus (user switches back to tab)
-    const handleFocus = () => {
-      console.log("Window focused, re-checking user role...");
-      fetchUserRole();
-    };
-
+    const handleFocus = () => fetchUserRole();
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, [fetchUserRole]);
@@ -167,19 +154,17 @@ export const SalesProvider = ({ children }) => {
         todaysSales,
         todaysMessage,
         loading,
-        error,
         role,
+        setAllSales,
         fetchSales,
+        loginSuccess,
+        resetContexts,
+        fetchTodaysSales,
         recordSale,
         removeSale,
-        fetchTodaysSales,
-        resetContexts,
-        loginSuccess,
       }}
     >
       {children}
     </SalesContext.Provider>
   );
 };
-
-// Note: `useSales` hook was moved to `src/context/useSales.js` to satisfy

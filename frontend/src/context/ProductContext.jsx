@@ -69,6 +69,16 @@ export const ProductProvider = ({ children }) => {
     );
   };
 
+  // --- Add this effect BELOW updateLocalProductQuantity ---
+  useEffect(() => {
+    const handler = (e) => {
+      updateLocalProductQuantity(e.detail);
+    };
+
+    window.addEventListener("product-updated", handler);
+    return () => window.removeEventListener("product-updated", handler);
+  }, []);
+
   // === Auto-load on mount ===
   useEffect(() => {
     // Only run if the user is logged in (role is defined)

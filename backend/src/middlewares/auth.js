@@ -18,10 +18,13 @@ const requireAuth = async (req, res, next) => {
     // Optional: fetch user from DB (for freshest role info)
     const user = await User.findById(decoded.id).select("-passwordHash");
     if (!user)
-      return res.status(401).json({ error: "User not found or no longer exists" });
+      return res
+        .status(401)
+        .json({ error: "User not found or no longer exists" });
 
     // Attach user payload to request
     req.user = {
+      _id: user._id,
       id: user._id,
       name: user.name,
       email: user.email,
@@ -50,4 +53,4 @@ const requireStorekeeper = (req, res, next) => {
   next();
 };
 
-module.exports = { requireAuth, requireAdmin, requireStorekeeper};
+module.exports = { requireAuth, requireAdmin, requireStorekeeper };

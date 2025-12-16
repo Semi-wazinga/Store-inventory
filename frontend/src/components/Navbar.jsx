@@ -32,7 +32,7 @@ const Navbar = () => {
       <nav className='navbar navbar-expand-lg'>
         <div className='container d-flex justify-content-between align-items-center'>
           <Link className='navbar-brand' to='/'>
-            InventoryApp
+            Store Inventory
           </Link>
           <div className=''>
             <Link className='nav-link  pe-3 d-inline' to='/admin'>

@@ -1,15 +1,32 @@
 .navbar {
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
-  color: #fff;
+  background-color: var(--color-secondary); /* 20% */
+  color: #0f1724;
   padding: 12px 16px;
   box-shadow: var(--shadow-sm);
 }
 
-.navbar a {
-  color: #fff;
-  text-decoration: none;
+.navbar-brand {
+  font-weight: 700;
+  color: var(--color-primary) !important;
 }
 
-.navbar .brand {
-  font-weight: 600;
+.navbar a {
+  color: #0f1724 !important;
+  font-weight: 500;
+  margin-right: 12px;
+}
+
+.navbar a:hover {
+  color: var(--color-primary) !important;
+}
+
+/* Logout button as accent, not danger */
+.navbar .btn-outline-danger {
+  border-color: var(--color-accent);
+  color: #0f1724;
+}
+
+.navbar .btn-outline-danger:hover {
+  background-color: var(--color-accent);
+  color: #0f1724;
 }

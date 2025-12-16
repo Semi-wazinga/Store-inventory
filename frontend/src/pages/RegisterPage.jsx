@@ -1,6 +1,17 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Button,
+  Alert,
+  Spinner,
+} from "react-bootstrap";
+import "./RegisterPage.css";
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -9,7 +20,7 @@ const RegisterPage = () => {
     name: "",
     email: "",
     password: "",
-    role: "storekeeper", // match backend
+    role: "storekeeper",
   });
 
   const [loading, setLoading] = useState(false);
@@ -30,14 +41,11 @@ const RegisterPage = () => {
     try {
       const payload = { ...formData, email: formData.email.toLowerCase() };
 
-      const res = await axios.post(
-        "http://localhost:5000/auth/register",
-        payload,
-        { withCredentials: true }
-      );
+      await axios.post("http://localhost:5000/auth/register", payload, {
+        withCredentials: true,
+      });
 
-      alert(`${res.data.user.role} registered successfully!`);
-      navigate("/"); // or navigate to login page
+      navigate("/");
     } catch (err) {
       const serverErrors = err.response?.data?.errors;
 
@@ -59,102 +67,112 @@ const RegisterPage = () => {
   };
 
   return (
-    <div
-      className='container d-flex justify-content-center align-items-center'
-      style={{ minHeight: "100vh" }}
-    >
-      <div className='card p-4 shadow' style={{ width: "450px" }}>
-        <h3 className='mb-3 text-center fw-bold'>Register User</h3>
-
-        {generalError && (
-          <div
-            className='alert alert-danger'
-            style={{ whiteSpace: "pre-line" }}
+    <div className='register-page d-flex align-items-center'>
+      <Container>
+        <Row className='justify-content-center align-items-center'>
+          {/* Left content */}
+          <Col
+            md={6}
+            className='d-flex flex-column justify-content-center mb-4 mb-md-0'
           >
-            {generalError}
-          </div>
-        )}
+            <h1 className='fs-1 fw-bold text-center'>Create account</h1>
+            <p className='lead text-dark text-center'>
+              Register a new admin or storekeeper to manage inventory and sales
+              efficiently.
+            </p>
+          </Col>
 
-        <form onSubmit={handleSubmit}>
-          {/* Name */}
-          <div className='mb-3'>
-            <label className='form-label'>Full Name</label>
-            <input
-              type='text'
-              className={`form-control ${fieldErrors.name ? "is-invalid" : ""}`}
-              name='name'
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
-            {fieldErrors.name && (
-              <div className='invalid-feedback'>{fieldErrors.name}</div>
-            )}
-          </div>
+          {/* Right card */}
+          <Col md={5}>
+            <Card className='p-4 shadow-sm rounded-3'>
+              <h3 className='text-center mb-4'>Register</h3>
 
-          {/* Email */}
-          <div className='mb-3'>
-            <label className='form-label'>Email Address</label>
-            <input
-              type='email'
-              className={`form-control ${
-                fieldErrors.email ? "is-invalid" : ""
-              }`}
-              name='email'
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-            {fieldErrors.email && (
-              <div className='invalid-feedback'>{fieldErrors.email}</div>
-            )}
-          </div>
+              {generalError && <Alert variant='danger'>{generalError}</Alert>}
 
-          {/* Password */}
-          <div className='mb-3'>
-            <label className='form-label'>Password</label>
-            <input
-              type='password'
-              className={`form-control ${
-                fieldErrors.password ? "is-invalid" : ""
-              }`}
-              name='password'
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-            {fieldErrors.password && (
-              <div className='invalid-feedback'>{fieldErrors.password}</div>
-            )}
-          </div>
+              <Form onSubmit={handleSubmit}>
+                {/* Name */}
+                <Form.Group className='mb-3'>
+                  <Form.Label>Full Name</Form.Label>
+                  <Form.Control
+                    type='text'
+                    name='name'
+                    value={formData.name}
+                    onChange={handleChange}
+                    className={fieldErrors.name ? "is-invalid" : ""}
+                    required
+                  />
+                  {fieldErrors.name && (
+                    <div className='invalid-feedback'>{fieldErrors.name}</div>
+                  )}
+                </Form.Group>
 
-          {/* Role */}
-          <div className='mb-3'>
-            <label className='form-label'>User Role</label>
-            <select
-              className={`form-select ${fieldErrors.role ? "is-invalid" : ""}`}
-              name='role'
-              value={formData.role}
-              onChange={handleChange}
-              required
-            >
-              <option value='admin'>Admin</option>
-              <option value='storekeeper'>Storekeeper</option>
-            </select>
-            {fieldErrors.role && (
-              <div className='invalid-feedback'>{fieldErrors.role}</div>
-            )}
-          </div>
+                {/* Email */}
+                <Form.Group className='mb-3'>
+                  <Form.Label>Email Address</Form.Label>
+                  <Form.Control
+                    type='email'
+                    name='email'
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={fieldErrors.email ? "is-invalid" : ""}
+                    required
+                  />
+                  {fieldErrors.email && (
+                    <div className='invalid-feedback'>{fieldErrors.email}</div>
+                  )}
+                </Form.Group>
 
-          <button
-            type='submit'
-            className='btn btn-primary w-100'
-            disabled={loading}
-          >
-            {loading ? "Registering..." : "Register User"}
-          </button>
-        </form>
-      </div>
+                {/* Password */}
+                <Form.Group className='mb-3'>
+                  <Form.Label>Password</Form.Label>
+                  <Form.Control
+                    type='password'
+                    name='password'
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={fieldErrors.password ? "is-invalid" : ""}
+                    required
+                  />
+                  {fieldErrors.password && (
+                    <div className='invalid-feedback'>
+                      {fieldErrors.password}
+                    </div>
+                  )}
+                </Form.Group>
+
+                {/* Role */}
+                <Form.Group className='mb-4'>
+                  <Form.Label>User Role</Form.Label>
+                  <Form.Select
+                    name='role'
+                    value={formData.role}
+                    onChange={handleChange}
+                    className={fieldErrors.role ? "is-invalid" : ""}
+                  >
+                    <option value='admin'>Admin</option>
+                    <option value='storekeeper'>Storekeeper</option>
+                  </Form.Select>
+                  {fieldErrors.role && (
+                    <div className='invalid-feedback'>{fieldErrors.role}</div>
+                  )}
+                </Form.Group>
+
+                <Button type='submit' className='w-100' disabled={loading}>
+                  {loading ? (
+                    <Spinner size='sm' animation='border' />
+                  ) : (
+                    "Register user"
+                  )}
+                </Button>
+              </Form>
+
+              <p className='text-center mt-3 mb-0 text-muted'>
+                Already have an account? <a href='/'>Sign in</a>
+              </p>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
     </div>
   );
 };

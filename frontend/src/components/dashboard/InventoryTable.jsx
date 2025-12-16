@@ -1,6 +1,7 @@
 import { useProducts } from "../../context/useProducts";
 import { Card, Table, Badge, Pagination } from "react-bootstrap";
 import { useState } from "react";
+import "./InventoryTable.css";
 
 export default function InventoryTable() {
   const { products, loading } = useProducts();
@@ -19,11 +20,11 @@ export default function InventoryTable() {
   const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
-    <Card className='p-4 shadow-sm mb-4'>
+    <Card className='p-4 shadow-sm mb-4 inventory-card'>
       <Card.Title className='text-center mb-4 fw-bold fs-4'>
         Current Inventory
       </Card.Title>
-      <Table hover responsive className='align-middle mb-0'>
+      <Table hover responsive className='align-middle mb-0 inventory-table'>
         <thead className='table-light'>
           <tr>
             <th>#</th>
