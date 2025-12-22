@@ -1,169 +1,229 @@
 import { useState } from "react";
-import { Modal, Button } from "react-bootstrap";
+import { Form, Button } from "react-bootstrap";
 import { useProducts } from "../../context/useProducts";
 
 export default function AddProductForm() {
   const { addProduct, fetchProducts } = useProducts();
 
-  const [form, setForm] = useState({
+  const [formData, setFormData] = useState({
     name: "",
     category: "",
-    quantity: "",
-    price: "",
+    stockType: "packet", // default
+    stockQuantity: 0, // packets or bottles
+    cardsPerPacket: 1,
+    pricePerPacket: 0,
+    pricePerCard: 0,
+    pricePerBottle: 0,
+    description: "",
   });
 
-  const [modal, setModal] = useState({
-    show: false,
-    title: "",
-    message: "",
-    type: "info", // "success", "error", "warning"
-  });
-
-  const openModal = (title, message, type = "info") => {
-    setModal({ show: true, title, message, type });
-  };
-
-  const closeModal = () => {
-    setModal({ ...modal, show: false });
-  };
-
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    if (!form.name || !form.category || !form.price) {
-      return openModal(
-        "Missing Fields",
-        "Please fill all required fields",
-        "warning"
-      );
+    // Basic validation
+    if (!formData.name || !formData.category || !formData.stockQuantity) {
+      setError("Please fill in all required fields");
+      return;
+    }
+
+    if (formData.stockType === "packet") {
+      if (
+        !formData.cardsPerPacket ||
+        !formData.pricePerPacket ||
+        !formData.pricePerCard
+      ) {
+        setError(
+          "Packets must have cards per packet, price per packet, and price per card"
+        );
+        return;
+      }
+    } else if (formData.stockType === "bottle") {
+      if (!formData.pricePerBottle) {
+        setError("Bottles must have price per bottle");
+        return;
+      }
+    }
+
+    const payload = {
+      name: formData.name,
+      category: formData.category,
+      stockType: formData.stockType,
+      stockQuantity: Number(formData.stockQuantity),
+      description: formData.description,
+    };
+
+    // Ensure type-specific fields
+    if (formData.stockType === "packet") {
+      payload.cardsPerPacket = Number(formData.cardsPerPacket);
+      payload.pricePerPacket = Number(formData.pricePerPacket);
+      payload.pricePerCard = Number(formData.pricePerCard);
+    } else if (formData.stockType === "bottle") {
+      // Important: use formData.pricePerBottle (not pricePerCard)
+      const price = Number(formData.pricePerBottle);
+      if (!price || price <= 0) {
+        setError("Please enter a valid price per bottle");
+        return;
+      }
+      payload.pricePerBottle = price;
+      payload.pricePerCard = 0; // default for bottles
     }
 
     try {
-      const payload = {
-        ...form,
-        quantity: Number(form.quantity),
-        price: Number(form.price),
-      };
-
-      await addProduct(payload);
-      await fetchProducts();
-
-      openModal("Success", "Product added successfully!", "success");
+      setLoading(true);
+      await addProduct(payload); // call ProductContext function
+      await fetchProducts(); // refresh product list
 
       // Reset form
-      setForm({
+      setFormData({
         name: "",
         category: "",
-        quantity: "",
-        price: "",
+        stockType: "packet",
+        stockQuantity: 0,
+        cardsPerPacket: 1,
+        pricePerPacket: 0,
+        pricePerCard: 0,
+        pricePerBottle: 0,
+        description: "",
       });
     } catch (err) {
-      console.error("Create product error:", err);
-      openModal(
-        "Error",
-        err.error || err.message || "Failed to add product",
-        "error"
-      );
+      setError(err.message || "Failed to add product");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <>
-      {/* MODAL */}
-      <Modal show={modal.show} onHide={closeModal} centered>
-        <Modal.Header
-          closeButton
-          className={
-            modal.type === "success"
-              ? "bg-success text-white"
-              : modal.type === "error"
-              ? "bg-danger text-white"
-              : "bg-warning text-dark"
+    <Form onSubmit={handleSubmit} className='p-4 bg-white shadow rounded-3'>
+      {error && <p className='text-danger'>{error}</p>}
+
+      <Form.Group className='mb-3'>
+        <Form.Label>Product Name</Form.Label>
+        <Form.Control
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder='Enter product name'
+          required
+        />
+      </Form.Group>
+
+      <Form.Group className='mb-3'>
+        <Form.Label>Category</Form.Label>
+        <Form.Control
+          value={formData.category}
+          onChange={(e) =>
+            setFormData({ ...formData, category: e.target.value })
+          }
+          placeholder='Enter category'
+          required
+        />
+      </Form.Group>
+
+      <Form.Group className='mb-3'>
+        <Form.Label>Stock Type</Form.Label>
+        <Form.Select
+          value={formData.stockType}
+          onChange={(e) =>
+            setFormData({ ...formData, stockType: e.target.value })
           }
         >
-          <Modal.Title>{modal.title}</Modal.Title>
-        </Modal.Header>
+          <option value='packet'>Packet</option>
+          <option value='bottle'>Bottle</option>
+        </Form.Select>
+      </Form.Group>
 
-        <Modal.Body>
-          <p className='mb-0'>{modal.message}</p>
-        </Modal.Body>
+      <Form.Group className='mb-3'>
+        <Form.Label>
+          Stock Quantity (
+          {formData.stockType === "bottle" ? "Bottles" : "Packets"})
+        </Form.Label>
+        <Form.Control
+          type='number'
+          value={formData.stockQuantity}
+          onChange={(e) =>
+            setFormData({ ...formData, stockQuantity: Number(e.target.value) })
+          }
+          min={1}
+          required
+        />
+      </Form.Group>
 
-        <Modal.Footer>
-          <Button variant='secondary' onClick={closeModal}>
-            OK
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* FORM */}
-      <div className='bg-white shadow rounded-3 p-4'>
-        <h3 className='mb-4 text-center fw-semibold'>Add New Product</h3>
-
-        <form onSubmit={handleSubmit} className='row g-3'>
-          {/* Product Name + Category */}
-          <div className='col-md-6'>
-            <label className='form-label'>Product Name</label>
-            <input
-              type='text'
-              name='name'
-              value={form.name}
-              onChange={handleChange}
-              className='form-control form-control-lg'
-              placeholder='Enter product name'
-              required
-            />
-          </div>
-
-          <div className='col-md-6'>
-            <label className='form-label'>Category</label>
-            <input
-              type='text'
-              name='category'
-              value={form.category}
-              onChange={handleChange}
-              className='form-control form-control-lg'
-              placeholder='Enter category'
-              required
-            />
-          </div>
-
-          {/* Quantity + Price */}
-          <div className='col-md-6'>
-            <label className='form-label'>Quantity</label>
-            <input
+      {formData.stockType === "packet" && (
+        <>
+          <Form.Group className='mb-3'>
+            <Form.Label>Cards per Packet</Form.Label>
+            <Form.Control
               type='number'
-              name='quantity'
-              value={form.quantity}
-              onChange={handleChange}
-              className='form-control form-control-lg'
-              placeholder='Enter quantity'
-            />
-          </div>
-
-          <div className='col-md-6'>
-            <label className='form-label'>Price</label>
-            <input
-              type='number'
-              name='price'
-              value={form.price}
-              onChange={handleChange}
-              className='form-control form-control-lg'
-              placeholder='Enter price'
+              value={formData.cardsPerPacket}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  cardsPerPacket: Number(e.target.value),
+                })
+              }
+              min={1}
               required
             />
-          </div>
+          </Form.Group>
 
-          {/* Submit Button */}
-          <div className='col-12 mt-3'>
-            <button type='submit' className='btn btn-success btn-lg w-100'>
-              Add Product
-            </button>
-          </div>
-        </form>
-      </div>
-    </>
+          <Form.Group className='mb-3'>
+            <Form.Label>Price per Packet</Form.Label>
+            <Form.Control
+              type='number'
+              value={formData.pricePerPacket}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  pricePerPacket: Number(e.target.value),
+                })
+              }
+              min={0}
+              required
+            />
+          </Form.Group>
+
+          <Form.Group className='mb-3'>
+            <Form.Label>Price per Card</Form.Label>
+            <Form.Control
+              type='number'
+              value={formData.pricePerCard}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  pricePerCard: Number(e.target.value),
+                })
+              }
+              min={0}
+              required
+            />
+          </Form.Group>
+        </>
+      )}
+
+      {formData.stockType === "bottle" && (
+        <Form.Group className='mb-3'>
+          <Form.Label>Price per Bottle</Form.Label>
+          <Form.Control
+            type='number'
+            value={formData.pricePerBottle}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                pricePerBottle: Number(e.target.value),
+              })
+            }
+            min={0}
+            required
+          />
+        </Form.Group>
+      )}
+
+      <Button type='submit' variant='primary' disabled={loading}>
+        {loading ? "Saving..." : "Add Product"}
+      </Button>
+    </Form>
   );
 }

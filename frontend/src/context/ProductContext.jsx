@@ -1,4 +1,3 @@
-// src/context/ProductContext.jsx
 import { useEffect, useState, useCallback } from "react";
 import { ProductContext } from "./product-context";
 import { useSales } from "./useSales";
@@ -15,12 +14,24 @@ export const ProductProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // === Fetch all products ===
+  // === Fetch all products from API ===
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       const res = await getProducts();
-      setProducts(res.data);
+
+      const validProducts = (res.data || []).filter((p) => p && p._id);
+
+      const normalized = validProducts.map((p) => ({
+        ...p,
+        stockQuantity: Number(p.stockQuantity),
+        cardsPerPacket: Number(p.cardsPerPacket ?? 0),
+        pricePerCard: Number(p.pricePerCard ?? 0),
+        pricePerPacket: Number(p.pricePerPacket ?? 0),
+        pricePerBottle: Number(p.pricePerBottle ?? 0),
+      }));
+
+      setProducts(normalized);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to load products");
     } finally {
@@ -28,11 +39,14 @@ export const ProductProvider = ({ children }) => {
     }
   }, []);
 
-  // === Create new product (Admin) ===
+  // === Add / Create Product ===
   const addProduct = async (productData) => {
     try {
       const res = await createProduct(productData);
-      setProducts((prev) => [...prev, res.data.product]);
+      const newProduct = res.data.product;
+      if (!newProduct?._id) return;
+
+      setProducts((prev) => [...prev, newProduct]);
       return res.data;
     } catch (err) {
       throw err.response?.data || err;
@@ -43,9 +57,13 @@ export const ProductProvider = ({ children }) => {
   const editProduct = async (id, updates) => {
     try {
       const res = await updateProduct(id, updates);
+      const updatedProduct = res.data.product;
+      if (!updatedProduct?._id) return;
+
       setProducts((prev) =>
-        prev.map((p) => (p._id === id ? res.data.product : p))
+        prev.map((p) => (p._id === id ? updatedProduct : p))
       );
+
       return res.data;
     } catch (err) {
       throw err.response?.data || err;
@@ -62,37 +80,41 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
-  //Gives he current quantity after each sale
-  const updateLocalProductQuantity = (updatedProduct) => {
-    setProducts((prev) =>
-      prev.map((p) => (p._id === updatedProduct._id ? updatedProduct : p))
-    );
-  };
-
-  // --- Add this effect BELOW updateLocalProductQuantity ---
+  // === Listen for product-updated events globally ===
   useEffect(() => {
     const handler = (e) => {
-      updateLocalProductQuantity(e.detail);
+      const updatedProduct = e.detail;
+
+      if (!updatedProduct?._id) return;
+
+      setProducts((prev) =>
+        prev.map((p) => (p._id === updatedProduct._id ? updatedProduct : p))
+      );
     };
 
     window.addEventListener("product-updated", handler);
     return () => window.removeEventListener("product-updated", handler);
   }, []);
 
-  // === Auto-load on mount ===
+  // === Auto-load products on mount or when role changes ===
   useEffect(() => {
-    // Only run if the user is logged in (role is defined)
-    if (role) {
-      console.log(
-        `ProductProvider mounted/role updated, fetching products for role: ${role}`
-      );
-      fetchProducts();
-    } else {
-      // If role is null (user logged out), clear products state to prevent stale data
-      setProducts([]);
-      console.log("User logged out or role missing. Clearing products state.");
-    }
+    if (role) fetchProducts();
+    else setProducts([]);
   }, [role, fetchProducts]);
+
+  // === Helper functions to display stock ===
+  const getStockPackets = (product) =>
+    product?.stockType === "packet" ? product.stockQuantity : 0;
+
+  const getStockCards = (product) =>
+    product?.stockType === "card"
+      ? product.stockQuantity
+      : product?.stockType === "packet"
+      ? product.stockQuantity * product.cardsPerPacket
+      : 0;
+
+  const getStockBottles = (product) =>
+    product?.stockType === "bottle" ? product.stockQuantity : 0;
 
   return (
     <ProductContext.Provider
@@ -104,14 +126,13 @@ export const ProductProvider = ({ children }) => {
         fetchProducts,
         addProduct,
         editProduct,
-        // backward-compatible alias: some components expect `deleteProduct`
         deleteProduct: removeProduct,
-        updateLocalProductQuantity,
+        getStockPackets,
+        getStockCards,
+        getStockBottles,
       }}
     >
       {children}
     </ProductContext.Provider>
   );
 };
-
-// `useProducts` moved to `src/context/useProducts.js`

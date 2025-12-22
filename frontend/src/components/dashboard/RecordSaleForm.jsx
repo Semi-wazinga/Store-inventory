@@ -1,126 +1,177 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useProducts } from "../../context/useProducts";
 import { useSales } from "../../context/useSales";
-import { Card, Form, Button, Row, Col, Modal } from "react-bootstrap";
+import { Card, Form, Button, Row, Col, Table, Modal } from "react-bootstrap";
 
 export default function RecordSaleForm() {
-  const { products, updateLocalProductQuantity } = useProducts();
+  const { products } = useProducts();
   const { recordSale } = useSales();
 
+  const [saleItems, setSaleItems] = useState([]);
   const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [saleUnit, setSaleUnit] = useState("card");
   const [showConfirm, setShowConfirm] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const selectedProduct = products.find((p) => p._id === productId);
 
-  // Open modal
-  const handleOpenConfirm = (e) => {
-    e.preventDefault();
-    if (!productId || !quantity) {
-      setError("Please select a product and quantity");
-      return;
+  const handleAddProduct = () => {
+    if (!selectedProduct) return setError("Select a product");
+
+    const qty = Number(quantity);
+    if (!qty || qty <= 0) return setError("Invalid quantity");
+
+    let available = 0;
+
+    if (saleUnit === "card") {
+      available =
+        selectedProduct.stockType === "packet"
+          ? selectedProduct.stockQuantity * selectedProduct.cardsPerPacket
+          : selectedProduct.stockQuantity;
+      if (selectedProduct.stockType === "bottle")
+        return setError("Cannot sell bottles as cards");
     }
+
+    if (saleUnit === "packet") {
+      if (selectedProduct.stockType !== "packet")
+        return setError("This product is not sold in packets");
+      available = selectedProduct.stockQuantity;
+    }
+
+    if (saleUnit === "bottle") {
+      if (selectedProduct.stockType !== "bottle")
+        return setError("This product is not sold in bottles");
+      available = selectedProduct.stockQuantity;
+    }
+
+    if (available < qty)
+      return setError(`Only ${available} ${saleUnit}s left in stock`);
+
+    const price =
+      saleUnit === "packet"
+        ? selectedProduct.pricePerPacket
+        : saleUnit === "card"
+        ? selectedProduct.pricePerCard
+        : selectedProduct.pricePerBottle;
+
+    setSaleItems((prev) => [
+      ...prev,
+      { productId, name: selectedProduct.name, quantity: qty, saleUnit, price },
+    ]);
+
+    setProductId("");
+    setQuantity("");
+    setSaleUnit("card");
     setError("");
-    setShowConfirm(true);
   };
 
-  // Confirm sale
+  const totalAmount = useMemo(
+    () => saleItems.reduce((sum, i) => sum + i.price * i.quantity, 0),
+    [saleItems]
+  );
+
   const handleConfirmSale = async () => {
     try {
-      setLoading(true);
-      const { updatedProduct } = await recordSale({
-        productId,
-        quantity: Number(quantity),
-      });
+      await recordSale(saleItems); // send ALL items once
 
-      // Update products in context
-      updateLocalProductQuantity(updatedProduct);
-
-      // Dispatch event so other components like InventoryTable update
-      window.dispatchEvent(
-        new CustomEvent("product-updated", { detail: updatedProduct })
-      );
-
-      // Reset form & close modal
-      setProductId("");
-      setQuantity("");
+      setSaleItems([]);
       setShowConfirm(false);
     } catch (err) {
-      setError(err?.error || "Failed to record sale");
-    } finally {
-      setLoading(false);
+      setError(err?.error || "Sale failed");
     }
   };
 
   return (
     <>
-      <Card className='p-4 shadow-sm mb-4'>
-        <Card.Title className='text-center mb-4 fw-bold fs-4'>
-          Record a Sale
-        </Card.Title>
+      <Card className='p-4'>
+        <Card.Title>Record Sale</Card.Title>
 
-        {error && <div className='alert alert-danger py-2'>{error}</div>}
+        {error && <div className='alert alert-danger'>{error}</div>}
 
-        <Form onSubmit={handleOpenConfirm}>
-          <Row className='mb-3'>
-            <Col>
-              <Form.Select
-                value={productId}
-                onChange={(e) => setProductId(e.target.value)}
-              >
-                <option value=''>-- Choose Product --</option>
-                {products.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.name} ({p.quantity} in stock)
-                  </option>
+        <Row className='g-2'>
+          <Col md={4}>
+            <Form.Select
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+            >
+              <option value=''>-- Select Product --</option>
+              {products.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
+              ))}
+            </Form.Select>
+          </Col>
+
+          <Col md={3}>
+            <Form.Control
+              type='number'
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder='Qty'
+            />
+          </Col>
+
+          <Col md={3}>
+            <Form.Select
+              value={saleUnit}
+              onChange={(e) => setSaleUnit(e.target.value)}
+            >
+              <option value='card'>Card</option>
+              <option value='packet'>Packet</option>
+              <option value='bottle'>Bottle</option>
+            </Form.Select>
+          </Col>
+
+          <Col md={2}>
+            <Button onClick={handleAddProduct}>Add</Button>
+          </Col>
+        </Row>
+
+        {saleItems.length > 0 && (
+          <>
+            <Table className='mt-3'>
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Qty</th>
+                  <th>Unit</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {saleItems.map((i, idx) => (
+                  <tr key={idx}>
+                    <td>{i.name}</td>
+                    <td>{i.quantity}</td>
+                    <td>{i.saleUnit}</td>
+                    <td>₦{i.price * i.quantity}</td>
+                  </tr>
                 ))}
-              </Form.Select>
-            </Col>
-            <Col>
-              <Form.Control
-                type='number'
-                min='1'
-                max={selectedProduct?.quantity}
-                placeholder='Quantity'
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-              />
-            </Col>
-          </Row>
-          <Button type='submit' className='w-100 btn-success'>
-            Record Sale
-          </Button>
-        </Form>
+              </tbody>
+            </Table>
+
+            <div className='text-end fw-bold'>Total: ₦{totalAmount}</div>
+          </>
+        )}
+
+        <Button
+          className='mt-3'
+          variant='success'
+          disabled={!saleItems.length}
+          onClick={() => setShowConfirm(true)}
+        >
+          Confirm Sale
+        </Button>
       </Card>
 
-      {/* Confirm Modal */}
-      <Modal show={showConfirm} onHide={() => setShowConfirm(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirm Sale</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to record this sale?
-          <br />
-          <strong>
-            {selectedProduct?.name} — {quantity} unit(s)
-          </strong>
-        </Modal.Body>
+      <Modal show={showConfirm} centered>
+        <Modal.Body>Confirm this sale?</Modal.Body>
         <Modal.Footer>
-          <Button
-            variant='secondary'
-            onClick={() => setShowConfirm(false)}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant='success'
-            onClick={handleConfirmSale}
-            disabled={loading}
-          >
-            {loading ? "Recording..." : "Confirm Sale"}
+          <Button onClick={() => setShowConfirm(false)}>Cancel</Button>
+          <Button variant='success' onClick={handleConfirmSale}>
+            Confirm
           </Button>
         </Modal.Footer>
       </Modal>

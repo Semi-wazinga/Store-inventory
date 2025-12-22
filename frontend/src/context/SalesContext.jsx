@@ -78,22 +78,37 @@ export const SalesProvider = ({ children }) => {
   }, [fetchSales, fetchTodaysSales]);
 
   // ---------------- RECORD SALE (FIXED) ----------------
-  const recordSale = async (saleData) => {
+  const recordSale = async (saleItems) => {
     try {
       setLoading(true);
 
-      const res = await createSale(saleData);
-      const { updatedProduct } = res.data;
+      const items = Array.isArray(saleItems) ? saleItems : [saleItems];
 
-      // ✅ update inventory immediately
-      if (updatedProduct) {
-        window.dispatchEvent(
-          new CustomEvent("product-updated", { detail: updatedProduct })
-        );
-      }
+      const results = await Promise.all(
+        items.map(async (item) => {
+          const res = await createSale({
+            productId: item.productId,
+            quantity: item.quantity,
+            saleUnit: item.saleUnit,
+          });
+
+          const { updatedProduct } = res.data;
+
+          // 🔥 IMPORTANT: notify ProductContext
+          if (updatedProduct?._id) {
+            window.dispatchEvent(
+              new CustomEvent("product-updated", { detail: updatedProduct })
+            );
+          }
+
+          return res.data;
+        })
+      );
 
       await fetchTodaysSales();
       await fetchSales(role);
+
+      return results;
     } catch (err) {
       throw err.response?.data || err;
     } finally {

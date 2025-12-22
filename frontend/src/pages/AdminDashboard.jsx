@@ -13,19 +13,22 @@ export default function AdminDashboard() {
         <h1 className='fw-semibold' style={{ fontSize: "1.5rem" }}>
           Admin Dashboard
         </h1>
-
-        <input
-          type='text'
-          placeholder='Search products...'
-          className='form-control'
-          style={{ maxWidth: "250px" }}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
       </header>
 
       <section className='dashboard-grid mb-4'>
         <AddProductForm />
+      </section>
+      <section className=' mb-4'>
+        <div className='d-flex justify-content-end mb-3'>
+          <input
+            type='text'
+            placeholder='Search products...'
+            className='form-control'
+            style={{ maxWidth: "250px" }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
         <ProductsTable searchTerm={searchTerm} />
       </section>
 

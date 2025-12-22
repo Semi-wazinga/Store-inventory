@@ -1,5 +1,5 @@
 import { useSales } from "../../context/useSales";
-import { Card, Table, Badge, Pagination } from "react-bootstrap";
+import { Card, Table, Pagination } from "react-bootstrap";
 import { useState } from "react";
 
 export default function TodaysSalesTable() {
@@ -28,6 +28,7 @@ export default function TodaysSalesTable() {
             <th>#</th>
             <th>Product</th>
             <th>Qty Sold</th>
+            <th>Total Price</th>
             <th>Date</th>
             {role === "admin" && <th>Sold By</th>}
           </tr>
@@ -36,9 +37,12 @@ export default function TodaysSalesTable() {
           {currentSales.map((s, i) => (
             <tr key={s._id}>
               <td>{indexOfFirstItem + i + 1}</td>
-              <td>{s.product?.name || "Product Deleted"}</td>
-              <td>{s.quantity}</td>
-              <td>{new Date(s.createdAt).toLocaleDateString()}</td>
+              <td>{s.product?.name || "Deleted"}</td>
+              <td>{s.quantity || 0}</td>
+              <td>₦{s.totalPrice?.toFixed(2) || 0}</td>
+              <td>
+                {s.createdAt ? new Date(s.createdAt).toLocaleString() : "N/A"}
+              </td>
               {role === "admin" && <td>{s.soldBy?.name || "Unknown"}</td>}
             </tr>
           ))}

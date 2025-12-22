@@ -2,44 +2,43 @@ const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
-    name: {
+    name: { type: String, required: true, unique: true, trim: true },
+    stockType: {
       type: String,
-      required: [true, "Product name is required"],
-      trim: true,
-      unique: true,
+      enum: ["card", "packet", "bottle"],
+      required: true,
     },
-    category: {
-      type: String,
-      required: [true, "Category is required"],
-    },
-    quantity: {
+    stockQuantity: { type: Number, required: true, min: 0 },
+
+    // Only required for packets
+    cardsPerPacket: {
       type: Number,
-      required: [true, "Quantity is required"],
-      default: 0,
+      required: function () {
+        return this.stockType === "packet";
+      },
     },
-    price: {
+    pricePerPacket: {
       type: Number,
-      required: [true, "Price is required"],
+      required: function () {
+        return this.stockType === "packet";
+      },
+    },
+
+    pricePerCard: { type: Number, required: true, min: 0 },
+    pricePerBottle: {
+      type: Number,
+      required: function () {
+        return this.stockType === "bottle";
+      },
       min: 0,
     },
-    description: {
-      type: String,
-      maxlength: 300,
-    },
-    image: {
-      type: String, // URL or file path
-      default: "",
-    },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "user",
-      required: false,
-    },
+
+    category: { type: String, required: true },
+    description: { type: String, maxlength: 300 },
+    image: { type: String, default: "" },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
   },
   { timestamps: true }
 );
-
-// Optional index for faster searches
-productSchema.index({ name: 1, category: 1 });
 
 module.exports = mongoose.model("product", productSchema);

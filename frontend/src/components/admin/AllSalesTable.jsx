@@ -32,6 +32,8 @@ export default function AllSalesTable() {
   };
 
   const confirmDelete = async () => {
+    // Remove locally first
+    //   setAllSales((prev) => prev.filter((s) => s._id !== selectedId));
     try {
       await removeSale(selectedId);
       if (fetchSales) await fetchSales(role); // refresh table
@@ -41,21 +43,6 @@ export default function AllSalesTable() {
       console.error("Failed to delete sale:", err);
     }
   };
-
-  // const confirmDelete = async () => {
-  //   // Remove locally first
-  //   setAllSales((prev) => prev.filter((s) => s._id !== selectedId));
-
-  //   try {
-  //     await removeSale(selectedId);
-  //     await fetchProducts(); // update inventory if necessary
-  //     // await fetchSales(role); // refresh sales data
-  //   } catch (err) {
-  //     console.warn("Delete failed:", err);
-  //   } finally {
-  //     closeDeleteModal();
-  //   }
-  // };
 
   if (loading) return <p>Loading sales...</p>;
 

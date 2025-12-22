@@ -16,8 +16,13 @@ export default function ProductsTable({ searchTerm }) {
   const [formData, setFormData] = useState({
     name: "",
     category: "",
-    quantity: 0,
-    price: 0,
+    stockType: "packet",
+    stockQuantity: 0,
+    cardsPerPacket: 1,
+    pricePerPacket: 0,
+    pricePerCard: 0,
+    pricePerBottle: 0,
+    description: "",
   });
 
   // Delete modal
@@ -34,49 +39,77 @@ export default function ProductsTable({ searchTerm }) {
   // PAGINATION
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const startIdx = (currentPage - 1) * itemsPerPage;
-
   const currentProducts = filteredProducts.slice(
     startIdx,
     startIdx + itemsPerPage
   );
-
   const changePage = (page) => {
     if (page > 0 && page <= totalPages) setCurrentPage(page);
   };
 
-  // Open Edit Modal
+  // // Calculate total cards and packets
+  // const getTotalCards = (product) =>
+  //   product.stockType === "packet"
+  //     ? product.stockQuantity * product.cardsPerPacket
+  //     : product.stockQuantity;
+
   const handleEditClick = (product) => {
     setCurrentProduct(product);
     setFormData({
       name: product.name,
       category: product.category,
-      quantity: product.quantity,
-      price: product.price,
+      stockType: product.stockType,
+      stockQuantity: product.stockQuantity,
+      cardsPerPacket: product.cardsPerPacket || 1,
+      pricePerPacket: product.pricePerPacket || 0,
+      pricePerBottle: product.pricePerBottle || 0,
+      pricePerCard: product.pricePerCard || 0,
+      description: product.description || "",
     });
     setShowModal(true);
   };
 
-  // Save edited product
   const handleSave = async () => {
     if (!currentProduct) return;
 
-    await editProduct(currentProduct._id, formData);
+    const payload = {
+      name: formData.name,
+      category: formData.category,
+      stockType: formData.stockType,
+      stockQuantity: Number(formData.stockQuantity),
+      description: formData.description,
+    };
+
+    if (formData.stockType === "packet") {
+      payload.cardsPerPacket = Number(formData.cardsPerPacket);
+      payload.pricePerPacket = Number(formData.pricePerPacket);
+      payload.pricePerCard = Number(formData.pricePerCard);
+    } else if (formData.stockType === "bottle") {
+      payload.pricePerBottle = Number(formData.pricePerBottle);
+      payload.pricePerCard = 0; // optional
+      payload.pricePerPacket = 0; // optional
+    }
+
+    await editProduct(currentProduct._id, payload);
     await fetchProducts();
     setShowModal(false);
   };
 
-  // Open Delete modal
   const handleDeleteClick = (product) => {
     setProductToDelete(product);
     setShowDeleteModal(true);
   };
 
-  // Confirm Delete
   const confirmDelete = async () => {
     await deleteProduct(productToDelete._id);
     await fetchProducts();
     setShowDeleteModal(false);
   };
+
+  const formatInt = (num) => Math.round(num);
+
+  const formatDecimal = (num, decimals = 1) =>
+    Number.isInteger(num) ? num : Number(num.toFixed(decimals));
 
   if (loading) return <p>Loading products...</p>;
 
@@ -89,7 +122,9 @@ export default function ProductsTable({ searchTerm }) {
           <tr>
             <th>Name</th>
             <th>Category</th>
-            <th>Qty</th>
+            <th>Stock</th>
+            <th>Cards/Packet</th>
+            <th>Price/Packet</th>
             <th>Price</th>
             <th>Status</th>
             <th style={{ width: "150px" }}>Actions</th>
@@ -99,54 +134,82 @@ export default function ProductsTable({ searchTerm }) {
         <tbody>
           {currentProducts.length === 0 && (
             <tr>
-              <td colSpan='6' className='text-center py-4 fw-semibold'>
+              <td colSpan='8' className='text-center py-4 fw-semibold'>
                 No products found
               </td>
             </tr>
           )}
 
-          {currentProducts.map((p) => (
-            <tr key={p._id}>
-              <td>{p.name}</td>
-              <td>{p.category}</td>
-              <td>{p.quantity}</td>
-              <td>${p.price}</td>
+          {currentProducts.map((p) => {
+            const totalCards =
+              p.stockType === "packet"
+                ? p.stockCards ?? p.stockQuantity * p.cardsPerPacket
+                : p.stockQuantity;
 
-              <td>
-                {p.quantity > 10 ? (
-                  <span className='badge bg-success-subtle text-success'>
-                    In Stock
-                  </span>
-                ) : p.quantity > 0 ? (
-                  <span className='badge bg-warning-subtle text-warning'>
-                    Limited
-                  </span>
-                ) : (
-                  <span className='badge bg-danger-subtle text-danger'>
-                    Out of Stock
-                  </span>
-                )}
-              </td>
+            const packets =
+              p.stockType === "packet" ? totalCards / p.cardsPerPacket : null;
 
-              <td>
-                <div className='d-flex gap-2'>
-                  <button
-                    className='btn btn-sm btn-primary'
-                    onClick={() => handleEditClick(p)}
-                  >
-                    Edit
-                  </button>
+            return (
+              <tr key={p._id}>
+                <td>{p.name}</td>
+                <td>{p.category}</td>
+                <td>
+                  {p.stockType === "packet"
+                    ? `${formatDecimal(packets, 1)} packet${
+                        formatDecimal(packets, 1) !== 1 ? "s" : ""
+                      } (${formatInt(totalCards)} cards)`
+                    : `${formatInt(p.stockQuantity)} bottle${
+                        p.stockQuantity !== 1 ? "s" : ""
+                      }`}
+                </td>
 
-                  <button
-                    className='btn btn-sm btn-danger'
-                    onClick={() => handleDeleteClick(p)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+                <td>{p.cardsPerPacket || "-"}</td>
+                <td>
+                  {p.stockType === "packet"
+                    ? `₦${p.pricePerPacket?.toFixed(2)}`
+                    : "-"}
+                </td>
+                <td>
+                  {p.stockType === "packet"
+                    ? `₦${p.pricePerCard?.toFixed(2)} /card`
+                    : p.stockType === "bottle"
+                    ? `₦${p.pricePerBottle?.toFixed(2)} /bottle`
+                    : "-"}
+                </td>
+                <td>
+                  {totalCards > 10 ? (
+                    <span className='badge bg-success-subtle text-success'>
+                      In Stock
+                    </span>
+                  ) : totalCards > 0 ? (
+                    <span className='badge bg-warning-subtle text-warning'>
+                      Limited
+                    </span>
+                  ) : (
+                    <span className='badge bg-danger-subtle text-danger'>
+                      Out of Stock
+                    </span>
+                  )}
+                </td>
+                <td>
+                  <div className='d-flex gap-2'>
+                    <button
+                      className='btn btn-sm btn-primary'
+                      onClick={() => handleEditClick(p)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className='btn btn-sm btn-danger'
+                      onClick={() => handleDeleteClick(p)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
@@ -162,7 +225,6 @@ export default function ProductsTable({ searchTerm }) {
                 Prev
               </button>
             </li>
-
             {Array.from({ length: totalPages }, (_, i) => (
               <li
                 key={i}
@@ -173,7 +235,6 @@ export default function ProductsTable({ searchTerm }) {
                 </button>
               </li>
             ))}
-
             <li
               className={`page-item ${
                 currentPage === totalPages && "disabled"
@@ -195,12 +256,10 @@ export default function ProductsTable({ searchTerm }) {
         <Modal.Header closeButton>
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
-
         <Modal.Body>
           Are you sure you want to delete{" "}
           <strong>{productToDelete?.name}</strong>?
         </Modal.Body>
-
         <Modal.Footer>
           <Button variant='secondary' onClick={() => setShowDeleteModal(false)}>
             Cancel
@@ -216,7 +275,6 @@ export default function ProductsTable({ searchTerm }) {
         <Modal.Header closeButton>
           <Modal.Title>Edit Product</Modal.Title>
         </Modal.Header>
-
         <Modal.Body>
           <Form>
             <Form.Group className='mb-3'>
@@ -240,35 +298,108 @@ export default function ProductsTable({ searchTerm }) {
             </Form.Group>
 
             <Form.Group className='mb-3'>
-              <Form.Label>Quantity</Form.Label>
+              <Form.Label>Stock Type</Form.Label>
+              <Form.Select
+                value={formData.stockType}
+                onChange={(e) =>
+                  setFormData({ ...formData, stockType: e.target.value })
+                }
+              >
+                <option value='packet'>Packet</option>
+                <option value='bottle'>Bottle</option>
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className='mb-3'>
+              <Form.Label>Stock Quantity</Form.Label>
               <Form.Control
                 type='number'
-                value={formData.quantity}
+                value={formData.stockQuantity}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    quantity: Number(e.target.value),
+                    stockQuantity: Number(e.target.value),
                   })
                 }
               />
             </Form.Group>
 
+            {formData.stockType === "packet" && (
+              <>
+                <Form.Group className='mb-3'>
+                  <Form.Label>Cards per Packet</Form.Label>
+                  <Form.Control
+                    type='number'
+                    value={formData.cardsPerPacket}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        cardsPerPacket: Number(e.target.value),
+                      })
+                    }
+                  />
+                </Form.Group>
+
+                <Form.Group className='mb-3'>
+                  <Form.Label>Price per Packet</Form.Label>
+                  <Form.Control
+                    type='number'
+                    value={formData.pricePerPacket}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pricePerPacket: Number(e.target.value),
+                      })
+                    }
+                  />
+                </Form.Group>
+
+                <Form.Group className='mb-3'>
+                  <Form.Label>Price per Card</Form.Label>
+                  <Form.Control
+                    type='number'
+                    value={formData.pricePerCard}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pricePerCard: Number(e.target.value),
+                      })
+                    }
+                  />
+                </Form.Group>
+              </>
+            )}
+
+            {formData.stockType === "bottle" && (
+              <Form.Group className='mb-3'>
+                <Form.Label>Price per Bottle</Form.Label>
+                <Form.Control
+                  type='number'
+                  value={formData.pricePerBottle} // ✅ use the correct field
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      pricePerBottle: Number(e.target.value), // ✅ update correct field
+                    })
+                  }
+                  min={0}
+                  required
+                />
+              </Form.Group>
+            )}
+
             <Form.Group className='mb-3'>
-              <Form.Label>Price</Form.Label>
+              <Form.Label>Description</Form.Label>
               <Form.Control
-                type='number'
-                value={formData.price}
+                as='textarea'
+                value={formData.description}
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    price: Number(e.target.value),
-                  })
+                  setFormData({ ...formData, description: e.target.value })
                 }
               />
             </Form.Group>
           </Form>
         </Modal.Body>
-
         <Modal.Footer>
           <Button variant='secondary' onClick={() => setShowModal(false)}>
             Cancel

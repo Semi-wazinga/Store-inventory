@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const salesSchema = new mongoose.Schema(
+const saleSchema = new mongoose.Schema(
   {
     product: {
       type: mongoose.Schema.Types.ObjectId,
@@ -12,10 +12,12 @@ const salesSchema = new mongoose.Schema(
       required: true,
       min: [1, "Quantity must be at least 1"],
     },
-    totalPrice: {
-      type: Number,
+    saleUnit: {
+      type: String,
+      enum: ["card", "packet", "bottle"],
       required: true,
     },
+    totalPrice: { type: Number, required: true },
     soldBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
@@ -25,4 +27,4 @@ const salesSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("sale", salesSchema);
+module.exports = mongoose.model("sale", saleSchema);

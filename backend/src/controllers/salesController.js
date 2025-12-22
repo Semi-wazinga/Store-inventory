@@ -1,15 +1,27 @@
 const Sales = require("../models/sales");
 const Product = require("../models/product");
 
-// === CREATE SALE ===
+// ============================
+// CREATE SALE
+// ============================
 exports.createSales = async (req, res, next) => {
   try {
-    const { productId, quantity } = req.body;
+    const { productId, quantity, saleUnit } = req.body;
 
-    if (!productId || !quantity) {
-      return res.status(400).json({
-        error: "Product and quantity are required",
-      });
+    // ---------------------------
+    // VALIDATION
+    // ---------------------------
+    if (!productId || !quantity || !saleUnit) {
+      return res
+        .status(400)
+        .json({ error: "Product, quantity, and sale unit are required" });
+    }
+
+    const qty = Number(quantity);
+    if (isNaN(qty) || qty <= 0) {
+      return res
+        .status(400)
+        .json({ error: "Quantity must be a positive number" });
     }
 
     const product = await Product.findById(productId);
@@ -17,20 +29,106 @@ exports.createSales = async (req, res, next) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    if (product.quantity < quantity) {
-      return res.status(400).json({ error: "Not enough stock available" });
+    let unitPrice = 0;
+
+    // ============================
+    // PACKET SALE
+    // ============================
+    if (saleUnit === "packet") {
+      if (product.stockType !== "packet") {
+        return res
+          .status(400)
+          .json({ error: "This product is not sold in packets" });
+      }
+
+      if (product.stockQuantity < qty) {
+        return res.status(400).json({ error: "Not enough packets in stock" });
+      }
+
+      if (typeof product.pricePerPacket !== "number") {
+        return res.status(400).json({ error: "Packet price not set" });
+      }
+
+      unitPrice = product.pricePerPacket;
+
+      // ✅ subtract PACKETS
+      product.stockQuantity -= qty;
     }
 
-    const totalPrice = product.price * quantity;
+    // ============================
+    // CARD SALE (FROM PACKETS)
+    // ============================
+    else if (saleUnit === "card") {
+      if (product.stockType !== "packet") {
+        return res
+          .status(400)
+          .json({ error: "Only packet products can be sold as cards" });
+      }
 
+      const totalCardsAvailable =
+        product.stockQuantity * product.cardsPerPacket;
+
+      if (totalCardsAvailable < qty) {
+        return res.status(400).json({ error: "Not enough cards in stock" });
+      }
+
+      if (typeof product.pricePerCard !== "number") {
+        return res.status(400).json({ error: "Card price not set" });
+      }
+
+      unitPrice = product.pricePerCard;
+
+      // ✅ convert cards → packets
+      const packetsToRemove = qty / product.cardsPerPacket;
+
+      product.stockQuantity -= packetsToRemove;
+    }
+
+    // ============================
+    // BOTTLE SALE
+    // ============================
+    else if (saleUnit === "bottle") {
+      if (product.stockType !== "bottle") {
+        return res
+          .status(400)
+          .json({ error: "This product is not sold in bottles" });
+      }
+
+      if (product.stockQuantity < qty) {
+        return res.status(400).json({ error: "Not enough bottles in stock" });
+      }
+
+      if (typeof product.pricePerBottle !== "number") {
+        return res.status(400).json({ error: "Bottle price not set" });
+      }
+
+      unitPrice = product.pricePerBottle;
+
+      // ✅ subtract BOTTLES
+      product.stockQuantity -= qty;
+    }
+
+    // ============================
+    // INVALID SALE UNIT
+    // ============================
+    else {
+      return res.status(400).json({ error: "Invalid sale unit" });
+    }
+
+    const totalPrice = unitPrice * qty;
+
+    // ---------------------------
+    // SAVE
+    // ---------------------------
     const sale = await Sales.create({
       product: productId,
-      quantity,
+      quantity: qty,
+      saleUnit,
+      unitPrice,
       totalPrice,
-      soldBy: req.user._id,
+      soldBy: req.user?._id || null,
     });
 
-    product.quantity -= quantity;
     await product.save();
 
     res.status(201).json({
@@ -43,11 +141,16 @@ exports.createSales = async (req, res, next) => {
   }
 };
 
-// === GET ALL SALES (ADMIN) ===
+// ============================
+// GET ALL SALES
+// ============================
 exports.getAllSales = async (req, res, next) => {
   try {
     const sales = await Sales.find()
-      .populate("product", "name category price")
+      .populate(
+        "product",
+        "name category stockType cardsPerPacket pricePerCard pricePerPacket pricePerBottle"
+      )
       .populate("soldBy", "name role")
       .sort({ createdAt: -1 });
 
@@ -57,7 +160,9 @@ exports.getAllSales = async (req, res, next) => {
   }
 };
 
-// === GET TODAY'S SALES ===
+// ============================
+// GET TODAY'S SALES
+// ============================
 exports.getTodaysSales = async (req, res, next) => {
   try {
     const start = new Date();
@@ -66,16 +171,17 @@ exports.getTodaysSales = async (req, res, next) => {
     const end = new Date();
     end.setHours(23, 59, 59, 999);
 
-    const filter = {
-      createdAt: { $gte: start, $lte: end },
-    };
+    const filter = { createdAt: { $gte: start, $lte: end } };
 
-    if (req.user.role !== "admin") {
+    if (req.user?.role !== "admin") {
       filter.soldBy = req.user._id;
     }
 
     const sales = await Sales.find(filter)
-      .populate("product", "name category price")
+      .populate(
+        "product",
+        "name category stockType cardsPerPacket pricePerCard pricePerPacket pricePerBottle"
+      )
       .populate("soldBy", "name role");
 
     res.json(sales);
@@ -84,11 +190,16 @@ exports.getTodaysSales = async (req, res, next) => {
   }
 };
 
-// === GET MY SALES ===
+// ============================
+// GET MY SALES
+// ============================
 exports.getMySales = async (req, res, next) => {
   try {
     const sales = await Sales.find({ soldBy: req.user._id })
-      .populate("product", "name category price")
+      .populate(
+        "product",
+        "name category stockType cardsPerPacket pricePerCard pricePerPacket pricePerBottle"
+      )
       .sort({ createdAt: -1 });
 
     res.json(sales);
@@ -97,173 +208,37 @@ exports.getMySales = async (req, res, next) => {
   }
 };
 
-// === DELETE SALE (ADMIN) ===
+// ============================
+// DELETE SALE (RESTORE STOCK)
+// ============================
 exports.deleteSales = async (req, res, next) => {
   try {
-    const sale = await Sales.findByIdAndDelete(req.params.id);
+    const sale = await Sales.findById(req.params.id);
     if (!sale) {
       return res.status(404).json({ error: "Sale not found" });
     }
+
+    const product = await Product.findById(sale.product);
+    if (product) {
+      if (sale.saleUnit === "packet") {
+        product.stockQuantity += sale.quantity;
+      }
+
+      if (sale.saleUnit === "card") {
+        product.stockQuantity += sale.quantity / product.cardsPerPacket;
+      }
+
+      if (sale.saleUnit === "bottle") {
+        product.stockQuantity += sale.quantity;
+      }
+
+      await product.save();
+    }
+
+    await sale.deleteOne();
 
     res.json({ message: "Sale deleted successfully" });
   } catch (err) {
     next(err);
   }
 };
-
-// // salesController
-// const mongoose = require("mongoose");
-// const Sales = require("../models/sales");
-// const Product = require("../models/product");
-
-// //create sales
-// exports.createSales = async (req, res, next) => {
-//   try {
-//     const { productId, quantity } = req.body;
-
-//     if (!productId || !quantity)
-//       return res
-//         .status(400)
-//         .json({ error: "Product Name and Quantity required" });
-
-//     const product = await Product.findById(productId);
-//     if (!product) return res.status(400).json({ error: "Product not found" });
-
-//     // check product quntity
-//     if (product.quantity < quantity)
-//       return res.status(400).json({ error: "Not enough stock available" });
-
-//     // calculate total
-//     const totalPrice = product.price * quantity;
-
-//     const sale = await Sales.create({
-//       product: productId,
-//       quantity,
-//       totalPrice,
-//       soldBy: req.user.id, // specific storekeeper (use req.user.id from auth middleware)
-//     });
-
-//     console.log(
-//       "Sale created - soldBy:",
-//       sale.soldBy,
-//       "User ID:",
-//       req.user.id,
-//       "User Object:",
-//       req.user
-//     );
-
-//     // update product quantity
-//     product.quantity -= quantity;
-//     await product.save();
-
-//     res.status(201).json({
-//       message: "sales succesfully recorded",
-//       sale,
-//       updatedProduct: product,
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
-// // === Get all sales === (admin only)
-// exports.getAllSales = async (req, res, next) => {
-//   try {
-//     const sales = await Sales.find()
-//       .populate("product", "name category price")
-//       .populate("soldBy", "name role");
-
-//     res.json(sales);
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
-// // === GET TODAY'S SALES ===
-// exports.getTodaysSales = async (req, res, next) => {
-//   try {
-//     const start = new Date();
-//     start.setHours(0, 0, 0, 0);
-
-//     const end = new Date();
-//     end.setHours(23, 59, 59, 999);
-
-//     // Admin: return all today's sales. Storekeeper: return only their sales for today.
-//     if (req.user && req.user.role === "admin") {
-//       const sales = await Sales.find({
-//         createdAt: { $gte: start, $lte: end },
-//       })
-//         .populate("product", "name category price")
-//         .populate("soldBy", "name role");
-
-//       return res.status(200).json(sales);
-//     }
-
-//     // For storekeepers, scope to their own sales
-//     const userId = req.user && (req.user.id || req.user._id);
-
-//     console.log("=== getTodaysSales Debug ===");
-//     console.log("User ID:", userId, "Type:", typeof userId);
-//     console.log("User role:", req.user?.role);
-//     console.log("Full user object:", req.user);
-
-//     // Convert to ObjectId if it's a string
-//     let userObjectId;
-//     try {
-//       userObjectId = new mongoose.Types.ObjectId(userId);
-//     } catch (err) {
-//       console.error("Invalid user ID format:", userId);
-//       return res.status(400).json({ error: "Invalid user ID" });
-//     }
-
-//     const sales = await Sales.find({
-//       soldBy: userObjectId,
-//       createdAt: { $gte: start, $lte: end },
-//     })
-//       .populate("product", "name price")
-//       .populate("soldBy", "name role");
-
-//     console.log(
-//       "Query results - Found",
-//       sales.length,
-//       "sales for user",
-//       userObjectId
-//     );
-
-//     if (!sales || sales.length === 0) {
-//       return res.status(200).json({ message: "No sales today yet" });
-//     }
-
-//     return res.status(200).json(sales);
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
-// // === Get sales by storekeeper ===
-// exports.getMySales = async (req, res, next) => {
-//   try {
-//     const userId = req.user && (req.user.id || req.user._id);
-//     const userObjectId = new mongoose.Types.ObjectId(userId);
-
-//     const sales = await Sales.find({ soldBy: userObjectId }).populate(
-//       "product",
-//       "name price"
-//     );
-//     res.json(sales);
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
-// // === Delete a sale (admin only) ===
-// exports.deleteSales = async (req, res, next) => {
-//   try {
-//     const { id } = req.params;
-//     const sale = await Sales.findByIdAndDelete(id);
-//     if (!sale) return res.status(404).json({ error: "Sale not found" });
-//     res.json({ message: "Sale deleted successfully" });
-//   } catch (err) {
-//     next(err);
-//   }
-// };

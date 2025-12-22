@@ -3,20 +3,63 @@ const Product = require("../models/product");
 
 // === CREATE PRODUCT ===
 exports.createProduct = async (req, res, next) => {
-    try {
-     const { name, category, quantity, price, description, image } = req.body;
+  try {
+    const {
+      name,
+      category,
+      stockType,
+      stockQuantity,
+      cardsPerPacket,
+      pricePerPacket,
+      pricePerCard,
+      pricePerBottle,
+      description,
+      image,
+    } = req.body;
 
-     if (!name || !category || price == null)
+    // Validate required fields common to all types
+    if (!name || !category || !stockType || stockQuantity == null) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
 
+    // Type-specific validations
+    if (stockType === "packet") {
+      if (!cardsPerPacket || pricePerPacket == null || pricePerCard == null) {
+        return res.status(400).json({
+          error:
+            "Packet products require cardsPerPacket, pricePerPacket, and pricePerCard",
+        });
+      }
+      if (cardsPerPacket < 1) {
+        return res
+          .status(400)
+          .json({ error: "Cards per packet must be at least 1" });
+      }
+    } else if (stockType === "bottle") {
+      if (pricePerBottle == null) {
+        return res.status(400).json({
+          error: "Bottle products require pricePerBottle",
+        });
+      }
+    }
 
-      //Check if product already exists by name (case-insensitive)
-      const existingProduct = await Product.findOne({ name: { $regex: new RegExp(`^${name}$`, "i") } });
+    // Check if product already exists by name (case-insensitive)
+    const existingProduct = await Product.findOne({
+      name: { $regex: new RegExp(`^${name}$`, "i") },
+    });
 
-     if (existingProduct) {
-      // If product exists, increase the quantity instead of creating a new one
-      existingProduct.quantity += Number(quantity) || 0;
-      if (price) existingProduct.price = price; // optional: update price
+    if (existingProduct) {
+      // Restock existing product
+      existingProduct.stockQuantity += stockQuantity;
+
+      if (stockType === "packet") {
+        existingProduct.cardsPerPacket = cardsPerPacket;
+        existingProduct.pricePerPacket = pricePerPacket;
+        existingProduct.pricePerCard = pricePerCard;
+      } else if (stockType === "bottle") {
+        existingProduct.pricePerBottle = pricePerBottle;
+      }
+
       if (description) existingProduct.description = description;
       if (image) existingProduct.image = image;
       existingProduct.updatedAt = new Date();
@@ -27,18 +70,30 @@ exports.createProduct = async (req, res, next) => {
         message: "Product restocked successfully",
         product: existingProduct,
       });
-     }
-     
-      // creates a new product if not existing
-      const product = await Product.create({
+    }
+
+    // Create new product
+    const productData = {
       name,
       category,
-      quantity,
-      price,
+      stockType,
+      stockQuantity,
       description,
       image,
-      createdBy: req.user._id
-    });
+      createdBy: req.user._id,
+    };
+
+    // Add type-specific fields
+    if (stockType === "packet") {
+      productData.cardsPerPacket = cardsPerPacket;
+      productData.pricePerPacket = pricePerPacket;
+      productData.pricePerCard = pricePerCard;
+    } else if (stockType === "bottle") {
+      productData.pricePerBottle = pricePerBottle;
+      productData.pricePerCard = 0; // default for bottles
+    }
+
+    const product = await Product.create(productData);
 
     res.status(201).json({ message: "Product added successfully", product });
   } catch (err) {
