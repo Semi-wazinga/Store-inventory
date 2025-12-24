@@ -35,38 +35,54 @@ exports.createSales = async (req, res, next) => {
     // PACKET SALE
     // ============================
     if (saleUnit === "packet") {
-      if (product.stockType !== "packet") {
+      if (product.stockType !== "packet" && product.stockType !== "carton") {
         return res
           .status(400)
           .json({ error: "This product is not sold in packets" });
       }
 
-      if (product.stockQuantity < qty) {
+      // compute available packets for packet or carton
+      const packetsAvailable =
+        product.stockType === "packet"
+          ? product.stockQuantity
+          : product.stockQuantity * product.packetsPerCarton;
+
+      if (packetsAvailable < qty) {
         return res.status(400).json({ error: "Not enough packets in stock" });
       }
 
+      // packet price can come directly, or be derived from carton
       if (typeof product.pricePerPacket !== "number") {
         return res.status(400).json({ error: "Packet price not set" });
       }
 
       unitPrice = product.pricePerPacket;
 
-      // ✅ subtract PACKETS
-      product.stockQuantity -= qty;
+      // ✅ subtract PACKETS (if carton, subtract fraction of cartons)
+      if (product.stockType === "packet") {
+        product.stockQuantity -= qty;
+      } else {
+        // cartons -> reduce cartons by qty / packetsPerCarton
+        product.stockQuantity -= qty / product.packetsPerCarton;
+      }
     }
 
     // ============================
-    // CARD SALE (FROM PACKETS)
+    // CARD SALE (FROM PACKETS OR CARTONS)
     // ============================
     else if (saleUnit === "card") {
-      if (product.stockType !== "packet") {
+      if (product.stockType !== "packet" && product.stockType !== "card") {
         return res
           .status(400)
-          .json({ error: "Only packet products can be sold as cards" });
+          .json({ error: "This product cannot be sold as cards" });
       }
 
       const totalCardsAvailable =
-        product.stockQuantity * product.cardsPerPacket;
+        product.stockType === "card"
+          ? product.stockQuantity
+          : product.stockType === "packet"
+          ? product.stockQuantity * product.cardsPerPacket
+          : 0;
 
       if (totalCardsAvailable < qty) {
         return res.status(400).json({ error: "Not enough cards in stock" });
@@ -79,9 +95,37 @@ exports.createSales = async (req, res, next) => {
       unitPrice = product.pricePerCard;
 
       // ✅ convert cards → packets
-      const packetsToRemove = qty / product.cardsPerPacket;
+      if (product.stockType === "packet") {
+        const packetsToRemove = qty / product.cardsPerPacket;
+        product.stockQuantity -= packetsToRemove;
+      } else {
+        // card type, subtract directly
+        product.stockQuantity -= qty;
+      }
+    }
 
-      product.stockQuantity -= packetsToRemove;
+    // ============================
+    // CARTON SALE
+    // ============================
+    else if (saleUnit === "carton") {
+      if (product.stockType !== "carton") {
+        return res
+          .status(400)
+          .json({ error: "This product is not sold in cartons" });
+      }
+
+      if (product.stockQuantity < qty) {
+        return res.status(400).json({ error: "Not enough cartons in stock" });
+      }
+
+      if (typeof product.pricePerCarton !== "number") {
+        return res.status(400).json({ error: "Carton price not set" });
+      }
+
+      unitPrice = product.pricePerCarton;
+
+      // ✅ subtract CARTONS
+      product.stockQuantity -= qty;
     }
 
     // ============================
@@ -149,7 +193,7 @@ exports.getAllSales = async (req, res, next) => {
     const sales = await Sales.find()
       .populate(
         "product",
-        "name category stockType cardsPerPacket pricePerCard pricePerPacket pricePerBottle"
+        "name category stockType packetsPerCarton cardsPerPacket pricePerCard pricePerPacket pricePerCarton pricePerBottle"
       )
       .populate("soldBy", "name role")
       .sort({ createdAt: -1 });
@@ -180,7 +224,7 @@ exports.getTodaysSales = async (req, res, next) => {
     const sales = await Sales.find(filter)
       .populate(
         "product",
-        "name category stockType cardsPerPacket pricePerCard pricePerPacket pricePerBottle"
+        "name category stockType packetsPerCarton cardsPerPacket pricePerCard pricePerPacket pricePerCarton pricePerBottle"
       )
       .populate("soldBy", "name role");
 
@@ -198,7 +242,7 @@ exports.getMySales = async (req, res, next) => {
     const sales = await Sales.find({ soldBy: req.user._id })
       .populate(
         "product",
-        "name category stockType cardsPerPacket pricePerCard pricePerPacket pricePerBottle"
+        "name category stockType packetsPerCarton cardsPerPacket pricePerCard pricePerPacket pricePerCarton pricePerBottle"
       )
       .sort({ createdAt: -1 });
 
@@ -220,14 +264,30 @@ exports.deleteSales = async (req, res, next) => {
 
     const product = await Product.findById(sale.product);
     if (product) {
+      // Restore packets
       if (sale.saleUnit === "packet") {
+        if (product.stockType === "packet") {
+          product.stockQuantity += sale.quantity;
+        } else if (product.stockType === "carton") {
+          product.stockQuantity += sale.quantity / product.packetsPerCarton;
+        }
+      }
+
+      // Restore cards (may come from card, packet, or carton stock types)
+      if (sale.saleUnit === "card") {
+        if (product.stockType === "card") {
+          product.stockQuantity += sale.quantity;
+        } else if (product.stockType === "packet") {
+          product.stockQuantity += sale.quantity / product.cardsPerPacket;
+        }
+      }
+
+      // Restore cartons
+      if (sale.saleUnit === "carton") {
         product.stockQuantity += sale.quantity;
       }
 
-      if (sale.saleUnit === "card") {
-        product.stockQuantity += sale.quantity / product.cardsPerPacket;
-      }
-
+      // Restore bottles
       if (sale.saleUnit === "bottle") {
         product.stockQuantity += sale.quantity;
       }

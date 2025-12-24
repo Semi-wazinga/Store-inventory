@@ -14,7 +14,7 @@ const saleSchema = new mongoose.Schema(
     },
     saleUnit: {
       type: String,
-      enum: ["card", "packet", "bottle"],
+      enum: ["card", "packet", "carton", "bottle"],
       required: true,
     },
     totalPrice: { type: Number, required: true },

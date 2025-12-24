@@ -22,6 +22,11 @@ const requireAuth = async (req, res, next) => {
         .status(401)
         .json({ error: "User not found or no longer exists" });
 
+    // Ensure token version matches (allows server-side invalidation on logout/change)
+    if (decoded.tokenVersion !== user.tokenVersion) {
+      return res.status(401).json({ error: "Token invalidated" });
+    }
+
     // Attach user payload to request
     req.user = {
       _id: user._id,

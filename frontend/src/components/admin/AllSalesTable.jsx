@@ -20,7 +20,7 @@ export default function AllSalesTable() {
 
   const salesToDisplay = role === "admin" ? allSales : sales;
 
-  // ✅ DATE FILTER (HOOK MUST BE HERE)
+  // DATE FILTER (HOOK MUST BE HERE)
   const filteredSales = useMemo(() => {
     return salesToDisplay.filter((sale) => {
       const saleDate = new Date(sale.createdAt);
@@ -33,12 +33,19 @@ export default function AllSalesTable() {
     });
   }, [salesToDisplay, startDate, endDate]);
 
-  // ✅ RESET PAGE WHEN FILTER CHANGES
+  // RESET PAGE WHEN FILTER CHANGES
   useEffect(() => {
     setCurrentPage(1);
   }, [startDate, endDate]);
 
-  // ✅ SAFE EARLY RETURN (after hooks)
+  // helper: format quantity with sale unit
+  const formatQty = (qty, unit) => {
+    const q = Number(qty) || 0;
+    const u = unit || "unit";
+    return `${q} ${u}${q === 1 ? "" : "s"}`;
+  };
+
+  // SAFE EARLY RETURN (after hooks)
   if (loading) return <p>Loading sales...</p>;
 
   // PAGINATION
@@ -153,7 +160,7 @@ export default function AllSalesTable() {
 
               <td>
                 <span className='badge bg-primary-subtle text-primary'>
-                  {s.quantity}
+                  {formatQty(s.quantity, s.saleUnit)}
                 </span>
               </td>
 

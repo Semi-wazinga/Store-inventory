@@ -25,9 +25,11 @@ export const ProductProvider = ({ children }) => {
       const normalized = validProducts.map((p) => ({
         ...p,
         stockQuantity: Number(p.stockQuantity),
+        packetsPerCarton: Number(p.packetsPerCarton ?? 0),
         cardsPerPacket: Number(p.cardsPerPacket ?? 0),
-        pricePerCard: Number(p.pricePerCard ?? 0),
+        pricePerCarton: Number(p.pricePerCarton ?? 0),
         pricePerPacket: Number(p.pricePerPacket ?? 0),
+        pricePerCard: Number(p.pricePerCard ?? 0),
         pricePerBottle: Number(p.pricePerBottle ?? 0),
       }));
 
@@ -103,8 +105,15 @@ export const ProductProvider = ({ children }) => {
   }, [role, fetchProducts]);
 
   // === Helper functions to display stock ===
+  const getStockCartons = (product) =>
+    product?.stockType === "carton" ? product.stockQuantity : 0;
+
   const getStockPackets = (product) =>
-    product?.stockType === "packet" ? product.stockQuantity : 0;
+    product?.stockType === "packet"
+      ? product.stockQuantity
+      : product?.stockType === "carton"
+      ? product.stockQuantity * product.packetsPerCarton
+      : 0;
 
   const getStockCards = (product) =>
     product?.stockType === "card"
@@ -127,6 +136,7 @@ export const ProductProvider = ({ children }) => {
         addProduct,
         editProduct,
         deleteProduct: removeProduct,
+        getStockCartons,
         getStockPackets,
         getStockCards,
         getStockBottles,

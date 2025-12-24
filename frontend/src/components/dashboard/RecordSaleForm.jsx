@@ -23,37 +23,64 @@ export default function RecordSaleForm() {
     if (!qty || qty <= 0) return setError("Invalid quantity");
 
     let available = 0;
+    let price = 0;
 
     if (saleUnit === "card") {
-      available =
-        selectedProduct.stockType === "packet"
-          ? selectedProduct.stockQuantity * selectedProduct.cardsPerPacket
-          : selectedProduct.stockQuantity;
-      if (selectedProduct.stockType === "bottle")
-        return setError("Cannot sell bottles as cards");
+      if (
+        selectedProduct.stockType === "bottle" ||
+        selectedProduct.stockType === "carton"
+      )
+        return setError("This product is not sold in cards");
+
+      if (selectedProduct.stockType === "card") {
+        available = selectedProduct.stockQuantity;
+      } else if (selectedProduct.stockType === "packet") {
+        available =
+          selectedProduct.stockQuantity * selectedProduct.cardsPerPacket;
+      }
+
+      // price fallback: per-card price, or derive from packet
+      price =
+        selectedProduct.pricePerCard ||
+        (selectedProduct.pricePerPacket && selectedProduct.cardsPerPacket
+          ? selectedProduct.pricePerPacket / selectedProduct.cardsPerPacket
+          : 0);
     }
 
     if (saleUnit === "packet") {
-      if (selectedProduct.stockType !== "packet")
+      if (selectedProduct.stockType === "packet") {
+        available = selectedProduct.stockQuantity;
+      } else if (selectedProduct.stockType === "carton") {
+        available =
+          selectedProduct.stockQuantity * selectedProduct.packetsPerCarton;
+      } else {
         return setError("This product is not sold in packets");
+      }
+
+      price =
+        selectedProduct.pricePerPacket ||
+        (selectedProduct.pricePerCarton && selectedProduct.packetsPerCarton
+          ? selectedProduct.pricePerCarton / selectedProduct.packetsPerCarton
+          : 0);
+    }
+
+    if (saleUnit === "carton") {
+      if (selectedProduct.stockType !== "carton")
+        return setError("This product is not sold in cartons");
+
       available = selectedProduct.stockQuantity;
+      price = selectedProduct.pricePerCarton || 0;
     }
 
     if (saleUnit === "bottle") {
       if (selectedProduct.stockType !== "bottle")
         return setError("This product is not sold in bottles");
       available = selectedProduct.stockQuantity;
+      price = selectedProduct.pricePerBottle || 0;
     }
 
     if (available < qty)
       return setError(`Only ${available} ${saleUnit}s left in stock`);
-
-    const price =
-      saleUnit === "packet"
-        ? selectedProduct.pricePerPacket
-        : saleUnit === "card"
-        ? selectedProduct.pricePerCard
-        : selectedProduct.pricePerBottle;
 
     setSaleItems((prev) => [
       ...prev,
@@ -63,6 +90,11 @@ export default function RecordSaleForm() {
     setProductId("");
     setQuantity("");
     setSaleUnit("card");
+    setError("");
+  };
+
+  const handleRemoveItem = (index) => {
+    setSaleItems((prev) => prev.filter((_, i) => i !== index));
     setError("");
   };
 
@@ -120,6 +152,7 @@ export default function RecordSaleForm() {
             >
               <option value='card'>Card</option>
               <option value='packet'>Packet</option>
+              <option value='carton'>Carton</option>
               <option value='bottle'>Bottle</option>
             </Form.Select>
           </Col>
@@ -138,6 +171,7 @@ export default function RecordSaleForm() {
                   <th>Qty</th>
                   <th>Unit</th>
                   <th>Total</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,6 +181,16 @@ export default function RecordSaleForm() {
                     <td>{i.quantity}</td>
                     <td>{i.saleUnit}</td>
                     <td>₦{i.price * i.quantity}</td>
+                    <td>
+                      <Button
+                        variant='danger'
+                        size='sm'
+                        onClick={() => handleRemoveItem(idx)}
+                        aria-label={`Remove ${i.name}`}
+                      >
+                        Remove
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

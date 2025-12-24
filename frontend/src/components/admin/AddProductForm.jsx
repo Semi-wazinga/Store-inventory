@@ -9,8 +9,10 @@ export default function AddProductForm() {
     name: "",
     category: "",
     stockType: "packet", // default
-    stockQuantity: 0, // packets or bottles
+    stockQuantity: 0, // packets, bottles or cartons
+    packetsPerCarton: 0,
     cardsPerPacket: 1,
+    pricePerCarton: 0,
     pricePerPacket: 0,
     pricePerCard: 0,
     pricePerBottle: 0,
@@ -46,6 +48,17 @@ export default function AddProductForm() {
         setError("Bottles must have price per bottle");
         return;
       }
+    } else if (formData.stockType === "carton") {
+      if (
+        !formData.packetsPerCarton ||
+        !formData.pricePerCarton ||
+        !formData.pricePerPacket
+      ) {
+        setError(
+          "Cartons must have packetsPerCarton, price per carton, and price per packet"
+        );
+        return;
+      }
     }
 
     const payload = {
@@ -70,6 +83,10 @@ export default function AddProductForm() {
       }
       payload.pricePerBottle = price;
       payload.pricePerCard = 0; // default for bottles
+    } else if (formData.stockType === "carton") {
+      payload.packetsPerCarton = Number(formData.packetsPerCarton);
+      payload.pricePerCarton = Number(formData.pricePerCarton);
+      payload.pricePerPacket = Number(formData.pricePerPacket);
     }
 
     try {
@@ -83,7 +100,9 @@ export default function AddProductForm() {
         category: "",
         stockType: "packet",
         stockQuantity: 0,
+        packetsPerCarton: 0,
         cardsPerPacket: 1,
+        pricePerCarton: 0,
         pricePerPacket: 0,
         pricePerCard: 0,
         pricePerBottle: 0,
@@ -132,13 +151,19 @@ export default function AddProductForm() {
         >
           <option value='packet'>Packet</option>
           <option value='bottle'>Bottle</option>
+          <option value='carton'>Carton</option>
         </Form.Select>
       </Form.Group>
 
       <Form.Group className='mb-3'>
         <Form.Label>
           Stock Quantity (
-          {formData.stockType === "bottle" ? "Bottles" : "Packets"})
+          {formData.stockType === "bottle"
+            ? "Bottles"
+            : formData.stockType === "carton"
+            ? "Cartons"
+            : "Packets"}
+          )
         </Form.Label>
         <Form.Control
           type='number'
@@ -219,6 +244,58 @@ export default function AddProductForm() {
             required
           />
         </Form.Group>
+      )}
+
+      {formData.stockType === "carton" && (
+        <>
+          <Form.Group className='mb-3'>
+            <Form.Label>Packets per Carton</Form.Label>
+            <Form.Control
+              type='number'
+              value={formData.packetsPerCarton}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  packetsPerCarton: Number(e.target.value),
+                })
+              }
+              min={1}
+              required
+            />
+          </Form.Group>
+
+          <Form.Group className='mb-3'>
+            <Form.Label>Price per Carton</Form.Label>
+            <Form.Control
+              type='number'
+              value={formData.pricePerCarton}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  pricePerCarton: Number(e.target.value),
+                })
+              }
+              min={0}
+              required
+            />
+          </Form.Group>
+
+          <Form.Group className='mb-3'>
+            <Form.Label>Price per Packet</Form.Label>
+            <Form.Control
+              type='number'
+              value={formData.pricePerPacket}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  pricePerPacket: Number(e.target.value),
+                })
+              }
+              min={0}
+              required
+            />
+          </Form.Group>
+        </>
       )}
 
       <Button type='submit' variant='primary' disabled={loading}>

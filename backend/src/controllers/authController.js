@@ -6,7 +6,12 @@ const { loginSchema, registerSchema } = require("../validators/authValidator");
 // === Helper: Sign JWT ===
 const signToken = (user) => {
   return jwt.sign(
-    { id: user._id, email: user.email, role: user.role },
+    {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      tokenVersion: user.tokenVersion,
+    },
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
@@ -148,6 +153,20 @@ exports.login = async (req, res, next) => {
 // === LOGOUT ===
 exports.logout = async (req, res) => {
   const isProd = process.env.NODE_ENV === "production";
+
+  try {
+    // If authenticated, bump tokenVersion to invalidate existing tokens
+    if (req.user && req.user._id) {
+      const user = await User.findById(req.user._id);
+      if (user) {
+        user.tokenVersion = (user.tokenVersion || 0) + 1;
+        await user.save();
+      }
+    }
+  } catch (err) {
+    console.error("Error invalidating token version:", err.message);
+  }
+
   res.clearCookie("token", {
     httpOnly: true,
     secure: isProd,

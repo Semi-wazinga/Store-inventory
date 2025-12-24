@@ -9,7 +9,9 @@ exports.createProduct = async (req, res, next) => {
       category,
       stockType,
       stockQuantity,
+      packetsPerCarton,
       cardsPerPacket,
+      pricePerCarton,
       pricePerPacket,
       pricePerCard,
       pricePerBottle,
@@ -41,6 +43,23 @@ exports.createProduct = async (req, res, next) => {
           error: "Bottle products require pricePerBottle",
         });
       }
+    } else if (stockType === "carton") {
+      // Cartons contain packets — coerce and validate numeric fields
+      const ppc = Number(packetsPerCarton);
+      const pCarton = Number(pricePerCarton);
+      const pPacket = Number(pricePerPacket);
+
+      if (
+        Number.isNaN(ppc) ||
+        ppc < 1 ||
+        Number.isNaN(pCarton) ||
+        Number.isNaN(pPacket)
+      ) {
+        return res.status(400).json({
+          error:
+            "Carton products require packetsPerCarton (>=1), pricePerCarton and pricePerPacket",
+        });
+      }
     }
 
     // Check if product already exists by name (case-insensitive)
@@ -50,14 +69,18 @@ exports.createProduct = async (req, res, next) => {
 
     if (existingProduct) {
       // Restock existing product
-      existingProduct.stockQuantity += stockQuantity;
+      existingProduct.stockQuantity += Number(stockQuantity);
 
       if (stockType === "packet") {
-        existingProduct.cardsPerPacket = cardsPerPacket;
-        existingProduct.pricePerPacket = pricePerPacket;
-        existingProduct.pricePerCard = pricePerCard;
+        existingProduct.cardsPerPacket = Number(cardsPerPacket);
+        existingProduct.pricePerPacket = Number(pricePerPacket);
+        existingProduct.pricePerCard = Number(pricePerCard);
       } else if (stockType === "bottle") {
-        existingProduct.pricePerBottle = pricePerBottle;
+        existingProduct.pricePerBottle = Number(pricePerBottle);
+      } else if (stockType === "carton") {
+        existingProduct.packetsPerCarton = Number(packetsPerCarton);
+        existingProduct.pricePerCarton = Number(pricePerCarton);
+        existingProduct.pricePerPacket = Number(pricePerPacket);
       }
 
       if (description) existingProduct.description = description;
@@ -85,12 +108,16 @@ exports.createProduct = async (req, res, next) => {
 
     // Add type-specific fields
     if (stockType === "packet") {
-      productData.cardsPerPacket = cardsPerPacket;
-      productData.pricePerPacket = pricePerPacket;
-      productData.pricePerCard = pricePerCard;
+      productData.cardsPerPacket = Number(cardsPerPacket);
+      productData.pricePerPacket = Number(pricePerPacket);
+      productData.pricePerCard = Number(pricePerCard);
     } else if (stockType === "bottle") {
-      productData.pricePerBottle = pricePerBottle;
+      productData.pricePerBottle = Number(pricePerBottle);
       productData.pricePerCard = 0; // default for bottles
+    } else if (stockType === "carton") {
+      productData.packetsPerCarton = Number(packetsPerCarton);
+      productData.pricePerCarton = Number(pricePerCarton);
+      productData.pricePerPacket = Number(pricePerPacket);
     }
 
     const product = await Product.create(productData);

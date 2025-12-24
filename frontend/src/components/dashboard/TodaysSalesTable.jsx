@@ -7,6 +7,12 @@ export default function TodaysSalesTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  const formatQty = (qty, unit) => {
+    const q = Number(qty) || 0;
+    const u = unit || "unit";
+    return `${q} ${u}${q === 1 ? "" : "s"}`;
+  };
+
   if (!role || loading) return <p>Loading today's sales...</p>;
   if (todaysMessage) return <p>{todaysMessage}</p>;
   if (!todaysSales || todaysSales.length === 0)
@@ -38,7 +44,7 @@ export default function TodaysSalesTable() {
             <tr key={s._id}>
               <td>{indexOfFirstItem + i + 1}</td>
               <td>{s.product?.name || "Deleted"}</td>
-              <td>{s.quantity || 0}</td>
+              <td>{formatQty(s.quantity, s.saleUnit)}</td>
               <td>₦{s.totalPrice?.toFixed(2) || 0}</td>
               <td>
                 {s.createdAt ? new Date(s.createdAt).toLocaleString() : "N/A"}

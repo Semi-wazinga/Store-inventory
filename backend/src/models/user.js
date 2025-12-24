@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema(
       enum: ["storekeeper", "admin"],
       default: "storekeeper",
     },
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

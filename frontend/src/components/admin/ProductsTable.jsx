@@ -18,7 +18,9 @@ export default function ProductsTable({ searchTerm }) {
     category: "",
     stockType: "packet",
     stockQuantity: 0,
+    packetsPerCarton: 0,
     cardsPerPacket: 1,
+    pricePerCarton: 0,
     pricePerPacket: 0,
     pricePerCard: 0,
     pricePerBottle: 0,
@@ -60,7 +62,9 @@ export default function ProductsTable({ searchTerm }) {
       category: product.category,
       stockType: product.stockType,
       stockQuantity: product.stockQuantity,
+      packetsPerCarton: product.packetsPerCarton || 0,
       cardsPerPacket: product.cardsPerPacket || 1,
+      pricePerCarton: product.pricePerCarton || 0,
       pricePerPacket: product.pricePerPacket || 0,
       pricePerBottle: product.pricePerBottle || 0,
       pricePerCard: product.pricePerCard || 0,
@@ -88,6 +92,10 @@ export default function ProductsTable({ searchTerm }) {
       payload.pricePerBottle = Number(formData.pricePerBottle);
       payload.pricePerCard = 0; // optional
       payload.pricePerPacket = 0; // optional
+    } else if (formData.stockType === "carton") {
+      payload.packetsPerCarton = Number(formData.packetsPerCarton);
+      payload.pricePerCarton = Number(formData.pricePerCarton);
+      payload.pricePerPacket = Number(formData.pricePerPacket);
     }
 
     await editProduct(currentProduct._id, payload);
@@ -141,13 +149,22 @@ export default function ProductsTable({ searchTerm }) {
           )}
 
           {currentProducts.map((p) => {
+            const totalPackets =
+              p.stockType === "packet"
+                ? p.stockQuantity
+                : p.stockType === "carton"
+                ? p.stockQuantity * p.packetsPerCarton
+                : null;
+
             const totalCards =
               p.stockType === "packet"
                 ? p.stockCards ?? p.stockQuantity * p.cardsPerPacket
-                : p.stockQuantity;
+                : null;
 
-            const packets =
-              p.stockType === "packet" ? totalCards / p.cardsPerPacket : null;
+            const displayUnits =
+              p.stockType === "packet" || p.stockType === "carton"
+                ? totalPackets
+                : p.stockQuantity;
 
             return (
               <tr key={p._id}>
@@ -155,17 +172,23 @@ export default function ProductsTable({ searchTerm }) {
                 <td>{p.category}</td>
                 <td>
                   {p.stockType === "packet"
-                    ? `${formatDecimal(packets, 1)} packet${
-                        formatDecimal(packets, 1) !== 1 ? "s" : ""
+                    ? `${formatDecimal(totalPackets, 1)} packet${
+                        formatDecimal(totalPackets, 1) !== 1 ? "s" : ""
                       } (${formatInt(totalCards)} cards)`
+                    : p.stockType === "carton"
+                    ? `${formatDecimal(totalPackets, 1)} packet${
+                        formatDecimal(totalPackets, 1) !== 1 ? "s" : ""
+                      }`
                     : `${formatInt(p.stockQuantity)} bottle${
                         p.stockQuantity !== 1 ? "s" : ""
                       }`}
                 </td>
 
-                <td>{p.cardsPerPacket || "-"}</td>
                 <td>
-                  {p.stockType === "packet"
+                  {p.stockType === "packet" ? p.cardsPerPacket || "-" : "-"}
+                </td>
+                <td>
+                  {p.stockType === "packet" || p.stockType === "carton"
                     ? `₦${p.pricePerPacket?.toFixed(2)}`
                     : "-"}
                 </td>
@@ -174,14 +197,16 @@ export default function ProductsTable({ searchTerm }) {
                     ? `₦${p.pricePerCard?.toFixed(2)} /card`
                     : p.stockType === "bottle"
                     ? `₦${p.pricePerBottle?.toFixed(2)} /bottle`
+                    : p.stockType === "carton"
+                    ? `₦${p.pricePerCarton?.toFixed(2)} /carton`
                     : "-"}
                 </td>
                 <td>
-                  {totalCards > 10 ? (
+                  {displayUnits > 10 ? (
                     <span className='badge bg-success-subtle text-success'>
                       In Stock
                     </span>
-                  ) : totalCards > 0 ? (
+                  ) : displayUnits > 0 ? (
                     <span className='badge bg-warning-subtle text-warning'>
                       Limited
                     </span>
@@ -307,6 +332,7 @@ export default function ProductsTable({ searchTerm }) {
               >
                 <option value='packet'>Packet</option>
                 <option value='bottle'>Bottle</option>
+                <option value='carton'>Carton</option>
               </Form.Select>
             </Form.Group>
 
@@ -386,6 +412,55 @@ export default function ProductsTable({ searchTerm }) {
                   required
                 />
               </Form.Group>
+            )}
+
+            {formData.stockType === "carton" && (
+              <>
+                <Form.Group className='mb-3'>
+                  <Form.Label>Packets per Carton</Form.Label>
+                  <Form.Control
+                    type='number'
+                    value={formData.packetsPerCarton}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        packetsPerCarton: Number(e.target.value),
+                      })
+                    }
+                    min={1}
+                  />
+                </Form.Group>
+
+                <Form.Group className='mb-3'>
+                  <Form.Label>Price per Carton</Form.Label>
+                  <Form.Control
+                    type='number'
+                    value={formData.pricePerCarton}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pricePerCarton: Number(e.target.value),
+                      })
+                    }
+                    min={0}
+                  />
+                </Form.Group>
+
+                <Form.Group className='mb-3'>
+                  <Form.Label>Price per Packet</Form.Label>
+                  <Form.Control
+                    type='number'
+                    value={formData.pricePerPacket}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pricePerPacket: Number(e.target.value),
+                      })
+                    }
+                    min={0}
+                  />
+                </Form.Group>
+              </>
             )}
 
             <Form.Group className='mb-3'>

@@ -44,15 +44,22 @@ export default function InventoryTable() {
         <tbody>
           {currentProducts.map((p, i) => {
             const isPacket = p.stockType === "packet";
+            const isCarton = p.stockType === "carton";
 
-            const cards = isPacket
+            const totalPackets = isPacket
               ? p.stockCards ?? p.stockQuantity * p.cardsPerPacket
+              : isCarton
+              ? p.stockQuantity * p.packetsPerCarton
               : null;
 
-            const units = isPacket ? cards / p.cardsPerPacket : p.stockQuantity;
+            const displayUnits =
+              isPacket || isCarton ? totalPackets : p.stockQuantity;
 
-            const isOut = isPacket ? cards <= 0 : units <= 0;
-            const isLow = isPacket ? cards <= p.cardsPerPacket * 2 : units <= 5;
+            const isOut = displayUnits == null ? false : displayUnits <= 0;
+            const isLow =
+              displayUnits == null
+                ? false
+                : displayUnits <= (isPacket ? p.cardsPerPacket * 2 : 5);
 
             return (
               <tr key={p._id}>
@@ -66,7 +73,7 @@ export default function InventoryTable() {
 
                 <td>
                   <Badge bg={isOut ? "danger" : isLow ? "warning" : "success"}>
-                    {formatNumber(units, 2)}
+                    {formatNumber(displayUnits, 2)}
                   </Badge>
                 </td>
 
@@ -75,7 +82,7 @@ export default function InventoryTable() {
                     <Badge
                       bg={isOut ? "danger" : isLow ? "warning" : "success"}
                     >
-                      {formatNumber(cards, 0)}
+                      {formatNumber(totalPackets, 0)}
                     </Badge>
                   ) : (
                     <Badge bg='secondary'>-</Badge>
