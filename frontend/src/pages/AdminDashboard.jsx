@@ -2,6 +2,7 @@ import { useState } from "react";
 import AddProductForm from "../components/admin/AddProductForm";
 import ProductsTable from "../components/admin/ProductsTable";
 import AllSalesTable from "../components/admin/AllSalesTable";
+import SalesSummary from "../components/admin/SalesSummary";
 
 export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -15,8 +16,15 @@ export default function AdminDashboard() {
         </h1>
       </header>
 
-      <section className='dashboard-grid mb-4'>
-        <AddProductForm />
+      <section className='mb-4'>
+        <div className='row g-4'>
+          <div className='col-md-4'>
+            <AddProductForm />
+          </div>
+          <div className='col-md-8'>
+            <SalesSummary />
+          </div>
+        </div>
       </section>
       <section className=' mb-4'>
         <div className='d-flex justify-content-end mb-3'>
