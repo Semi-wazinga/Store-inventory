@@ -43,7 +43,7 @@ const RegisterPage = () => {
 
       await registerUser(payload);
 
-      navigate("/");
+      navigate("/login");
     } catch (err) {
       const serverErrors = err.response?.data?.errors;
 
@@ -165,7 +165,7 @@ const RegisterPage = () => {
               </Form>
 
               <p className='text-center mt-3 mb-0 text-muted'>
-                Already have an account? <a href='/'>Sign in</a>
+                Already have an account? <a href='/login'>Sign in</a>
               </p>
             </Card>
           </Col>

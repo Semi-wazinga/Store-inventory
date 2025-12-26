@@ -17,13 +17,13 @@ const Navbar = () => {
       resetSales();
 
       // ⚠️ IMPORTANT: Force React to fully re-mount all components
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     } catch (err) {
       console.error("Logout failed:", err);
       // Reset state even if API fails to clean up locally
       resetSales();
 
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     }
   };
 
@@ -31,7 +31,7 @@ const Navbar = () => {
     <>
       <nav className='navbar navbar-expand-lg'>
         <div className='container d-flex justify-content-between align-items-center'>
-          <Link className='navbar-brand' to='/'>
+          <Link className='navbar-brand' to='/login'>
             Store Inventory
           </Link>
           <div className=''>

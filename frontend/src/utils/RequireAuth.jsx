@@ -19,7 +19,7 @@ const RequireAuth = ({ children }) => {
   }
 
   // Only storekeepers allowed
-  if (role !== "storekeeper") return <Navigate to='/' replace />;
+  if (role !== "storekeeper") return <Navigate to='/login' replace />;
 
   return children;
 };
@@ -34,7 +34,7 @@ export default RequireAuth;
 //   const { role } = useSales();
 
 //   // if (role === null) return <p>Loading user role...</p>;
-//   if (role !== "storekeeper") return <Navigate to='/' replace />;
+//   if (role !== "storekeeper") return <Navigate to='/login' replace />;
 
 //   return children;
 // };

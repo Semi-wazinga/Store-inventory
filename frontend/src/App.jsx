@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { StoreKeeper, AdminDashboard, Login, Register } from "./pages";
 import Navbar from "./components/Navbar";
 import { SalesProvider } from "./context/SalesContext";
@@ -15,7 +15,8 @@ function App() {
             <Navbar />
             <div>
               <Routes>
-                <Route path='/' element={<Login />} />
+                <Route path='/login' element={<Login />} />
+                <Route path='/' element={<Navigate to='/login' replace />} />
                 <Route path='/register' element={<Register />} />
                 <Route
                   path='/admin'

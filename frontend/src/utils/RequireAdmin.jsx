@@ -19,7 +19,7 @@ const RequireAdmin = ({ children }) => {
   }
 
   // Only admins allowed
-  if (role !== "admin") return <Navigate to='/' replace />;
+  if (role !== "admin") return <Navigate to='/login' replace />;
 
   return children;
 };
@@ -34,7 +34,7 @@ export default RequireAdmin;
 //   const { role } = useSales();
 
 //   if (role !== "admin") {
-//     return <Navigate to='/' replace />; // redirect to login if not admin
+//     return <Navigate to='/login' replace />; // redirect to login if not admin
 //   }
 
 //   return children;
