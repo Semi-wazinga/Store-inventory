@@ -11,7 +11,7 @@ import {
   Alert,
   Spinner,
 } from "react-bootstrap";
-import axios from "axios";
+import { loginUser } from "../api/api";
 import "./LoginPage.css";
 
 const LoginPage = () => {
@@ -36,9 +36,7 @@ const LoginPage = () => {
 
     try {
       const payload = { ...formData, email: formData.email.toLowerCase() };
-      await axios.post("http://localhost:5000/auth/login", payload, {
-        withCredentials: true,
-      });
+      await loginUser(payload);
 
       // Use loginSuccess from context to fetch user role immediately
       const userRole = await loginSuccess();

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import { registerUser } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import {
   Container,
@@ -41,9 +41,7 @@ const RegisterPage = () => {
     try {
       const payload = { ...formData, email: formData.email.toLowerCase() };
 
-      await axios.post("http://localhost:5000/auth/register", payload, {
-        withCredentials: true,
-      });
+      await registerUser(payload);
 
       navigate("/");
     } catch (err) {
