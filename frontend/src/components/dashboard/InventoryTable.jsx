@@ -25,6 +25,12 @@ export default function InventoryTable() {
     return Number.isInteger(num) ? num : Number(num.toFixed(decimals));
   };
 
+  // Format packets / cartons: show integer when whole packet(s), otherwise one decimal (e.g. 1 or 1.5)
+  const formatUnits = (num) => {
+    if (num == null || isNaN(num)) return "-";
+    return Number.isInteger(num) ? `${num}` : num.toFixed(1);
+  };
+
   return (
     <Card className='p-4 shadow-sm mb-4 inventory-card'>
       <Card.Title className='text-center mb-4 fw-bold fs-4'>
@@ -46,8 +52,16 @@ export default function InventoryTable() {
             const isPacket = p.stockType === "packet";
             const isCarton = p.stockType === "carton";
 
-            const totalPackets = isPacket
+            // Total cards (for packet products) or null otherwise
+            const totalCards = isPacket
               ? p.stockCards ?? p.stockQuantity * p.cardsPerPacket
+              : null;
+
+            // Total packets: for packet products, derive from totalCards when available
+            const totalPackets = isPacket
+              ? totalCards !== null
+                ? totalCards / (p.cardsPerPacket || 1)
+                : p.stockQuantity
               : isCarton
               ? p.stockQuantity * p.packetsPerCarton
               : null;
@@ -56,10 +70,11 @@ export default function InventoryTable() {
               isPacket || isCarton ? totalPackets : p.stockQuantity;
 
             const isOut = displayUnits == null ? false : displayUnits <= 0;
+            // Low threshold: packets/cartons considered low at <= 2 units; bottles at <= 5
             const isLow =
               displayUnits == null
                 ? false
-                : displayUnits <= (isPacket ? p.cardsPerPacket * 2 : 5);
+                : displayUnits <= (isPacket || isCarton ? 2 : 5);
 
             return (
               <tr key={p._id}>
@@ -73,7 +88,9 @@ export default function InventoryTable() {
 
                 <td>
                   <Badge bg={isOut ? "danger" : isLow ? "warning" : "success"}>
-                    {formatNumber(displayUnits, 2)}
+                    {isPacket || isCarton
+                      ? formatUnits(displayUnits)
+                      : formatNumber(displayUnits, 0)}
                   </Badge>
                 </td>
 
@@ -82,7 +99,7 @@ export default function InventoryTable() {
                     <Badge
                       bg={isOut ? "danger" : isLow ? "warning" : "success"}
                     >
-                      {formatNumber(totalPackets, 0)}
+                      {formatNumber(totalCards, 0)}
                     </Badge>
                   ) : (
                     <Badge bg='secondary'>-</Badge>

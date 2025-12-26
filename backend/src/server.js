@@ -4,7 +4,6 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const path = require("path");
 
 const connectDB = require("./config/db");
 const authRoute = require("./routes/authRoute");
