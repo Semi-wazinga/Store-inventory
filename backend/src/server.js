@@ -29,6 +29,10 @@ app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
 
+app.get("/", (req, res) => {
+  res.send("API is running 🚀");
+});
+
 //route
 app.use("/auth", authRoute);
 app.use("/product", productRoute);
