@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useSales } from "../context/useSales";
 import {
   Container,
@@ -16,7 +16,7 @@ import "./LoginPage.css";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { loginSuccess } = useSales();
+  const { loginSuccess, role } = useSales();
 
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState({});
@@ -132,9 +132,11 @@ const LoginPage = () => {
                 </Button>
               </Form>
 
-              <p className='text-center mt-3 mb-0 text-muted'>
-                Don’t have an account? <a href='/register'>Register</a>
-              </p>
+              {role === "admin" && (
+                <p className='text-center mt-3 mb-0 text-muted'>
+                  Don’t have an account? <Link to='/register'>Register</Link>
+                </p>
+              )}
             </Card>
           </Col>
         </Row>

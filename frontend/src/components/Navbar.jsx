@@ -5,7 +5,7 @@ import { useSales } from "../context/useSales";
 import "./Navbar.css";
 
 const Navbar = () => {
-  const { resetContexts: resetSales } = useSales();
+  const { resetContexts: resetSales, role } = useSales();
 
   const navigate = useNavigate();
 
@@ -35,6 +35,12 @@ const Navbar = () => {
             Store Inventory
           </Link>
           <div className=''>
+            {" "}
+            {role === "admin" && (
+              <Link className='nav-link  pe-3 d-inline' to='/register'>
+                Register
+              </Link>
+            )}
             <Link className='nav-link  pe-3 d-inline' to='/admin'>
               Admin
             </Link>

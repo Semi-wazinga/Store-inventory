@@ -15,7 +15,7 @@ const { registerSchema, loginSchema } = require("../validators/authValidator");
 const rateLimiter = require("../middlewares/rateLimiter");
 
 // Public
-// Apply rate limiting to registration/login to mitigate brute-force
+// Apply rate limits to registration and login to mitigate brute-force attempts
 router.post("/register", rateLimiter, validate(registerSchema), register); // you can later restrict this to admin only
 router.post("/login", rateLimiter, validate(loginSchema), login);
 

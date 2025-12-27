@@ -17,7 +17,14 @@ function App() {
               <Routes>
                 <Route path='/login' element={<Login />} />
                 <Route path='/' element={<Navigate to='/login' replace />} />
-                <Route path='/register' element={<Register />} />
+                <Route
+                  path='/register'
+                  element={
+                    <RequireAdmin>
+                      <Register />
+                    </RequireAdmin>
+                  }
+                />
                 <Route
                   path='/admin'
                   element={
